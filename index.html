@@ -42,12 +42,12 @@ body{
 /* ---------- ekran wczytywania ---------- */
 .start{
   position:absolute;inset:0;z-index:20;background:var(--las);
-  display:grid;place-content:center;justify-items:center;gap:16px;text-align:center;
+  display:grid;place-content:center;justify-items:center;gap:15px;text-align:center;
   padding:24px;transition:opacity .45s ease;
 }
 .start[data-koniec="1"]{opacity:0;pointer-events:none}
 .start h1{font-family:Bitter,Georgia,serif;font-weight:700;font-size:30px;letter-spacing:-.02em}
-.start p{font-size:13.5px;color:var(--kamien);max-width:32ch;line-height:1.5}
+.start p{font-size:13.5px;color:var(--kamien);max-width:34ch;line-height:1.55}
 .pasek{width:150px;height:2px;background:var(--linia);overflow:hidden}
 .pasek i{display:block;width:40%;height:100%;background:var(--szklo);animation:suw 1.15s ease-in-out infinite}
 @keyframes suw{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
@@ -56,31 +56,47 @@ body{
 /* ---------- pasek górny ---------- */
 .gora{
   position:absolute;top:0;left:0;right:0;z-index:5;
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:calc(env(safe-area-inset-top) + 12px) 14px 12px;pointer-events:none;
+  padding:calc(env(safe-area-inset-top) + 12px) 0 0;pointer-events:none;
 }
+.rzad{display:flex;align-items:center;gap:9px;padding:0 14px}
 .znak{
-  pointer-events:auto;background:var(--las-mgla);
-  border:1px solid var(--linia);border-radius:3px;padding:7px 13px 8px;
+  pointer-events:auto;background:var(--las-mgla);border:1px solid var(--linia);
+  border-radius:3px;padding:7px 13px 8px;
   font-family:Bitter,Georgia,serif;font-weight:700;font-size:16px;letter-spacing:-.01em;
 }
 .znak span{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   color:var(--kamien);font-weight:400;font-size:11.5px;margin-left:7px;
 }
-.sezon{
-  pointer-events:auto;display:flex;background:var(--las-mgla);
-  border:1px solid var(--linia);border-radius:3px;overflow:hidden;
+.oto{
+  pointer-events:auto;margin-left:auto;background:var(--las-mgla);border:1px solid var(--linia);
+  border-radius:3px;color:var(--snieg);font:inherit;font-size:13px;padding:9px 14px;cursor:pointer;
 }
-.sezon button{font:inherit;font-size:13px;color:var(--kamien);background:none;border:0;padding:9px 15px;cursor:pointer}
-.sezon button[aria-pressed="true"]{background:var(--szklo);color:var(--snieg)}
-.sezon button:focus-visible{outline:2px solid var(--snieg);outline-offset:-2px}
+.oto:focus-visible{outline:2px solid var(--snieg);outline-offset:2px}
+
+.tematy{
+  pointer-events:auto;display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;
+  padding:9px 14px 2px;
+  mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 14px),transparent);
+}
+.tematy::-webkit-scrollbar{display:none}
+.tematy button{
+  flex:0 0 auto;font:inherit;font-size:12.5px;cursor:pointer;white-space:nowrap;
+  background:var(--las-mgla);color:var(--kamien);
+  border:1px solid var(--linia);border-radius:3px;padding:6px 12px;
+}
+.tematy button[aria-pressed="true"]{background:var(--szklo);color:var(--snieg);border-color:var(--szklo)}
+.tematy button:focus-visible{outline:2px solid var(--snieg);outline-offset:2px}
 
 /* ---------- pinezki ---------- */
 .pin{cursor:pointer;display:grid;place-items:center;transform-origin:50% 100%}
-.pin i{display:block;width:15px;height:15px;border-radius:50%;background:var(--szklo);border:2.5px solid var(--snieg);box-shadow:0 2px 9px rgba(0,0,0,.5)}
-.pin.partner i{width:26px;height:26px;background:var(--zrodlo);border-width:3px;box-shadow:0 0 0 5px rgba(156,74,34,.28),0 3px 12px rgba(0,0,0,.55)}
-.pin.wybrany i{background:var(--snieg);border-color:var(--szklo)}
+.pin i{
+  display:grid;place-items:center;width:23px;height:23px;border-radius:50%;
+  border:2px solid var(--snieg);box-shadow:0 2px 9px rgba(0,0,0,.5);
+}
+.pin svg{display:block}
+.pin.partner i{width:34px;height:34px;border-width:2.5px;box-shadow:0 0 0 5px rgba(156,74,34,.26),0 3px 12px rgba(0,0,0,.55)}
+.pin.wybrany i{outline:2.5px solid var(--snieg);outline-offset:2px}
 
 /* ---------- taśma kafelków ---------- */
 .tasma{
@@ -94,27 +110,31 @@ body{
 .kafel{
   scroll-snap-align:start;flex:0 0 auto;background:var(--las-mgla);
   border:1px solid var(--linia);border-radius:3px;padding:9px 13px 10px;
-  text-align:left;cursor:pointer;font:inherit;color:var(--snieg);max-width:62vw;
+  text-align:left;cursor:pointer;font:inherit;color:var(--snieg);max-width:64vw;
+  border-left:3px solid var(--kamien);
 }
 .kafel b{display:block;font-family:Bitter,Georgia,serif;font-weight:700;font-size:14px;white-space:nowrap}
 .kafel em{display:block;font-style:normal;font-size:11.5px;color:var(--kamien);margin-top:2px}
-.kafel.partner{border-color:var(--zrodlo);border-left-width:3px}
 .kafel:focus-visible{outline:2px solid var(--snieg);outline-offset:2px}
 
-/* ---------- panel atrakcji ---------- */
+/* ---------- panel ---------- */
 .panel{
   position:absolute;left:0;right:0;bottom:0;z-index:7;background:var(--las);
   border-top:1px solid var(--linia);border-radius:10px 10px 0 0;
   padding:16px 18px calc(env(safe-area-inset-bottom) + 18px);
   transform:translateY(110%);transition:transform .28s cubic-bezier(.22,.7,.3,1);
-  max-height:72vh;overflow-y:auto;box-shadow:0 -14px 44px rgba(0,0,0,.5);
+  max-height:74vh;overflow-y:auto;box-shadow:0 -14px 44px rgba(0,0,0,.5);
 }
 .panel[data-otwarty="1"]{transform:translateY(0)}
 .uchwyt{width:34px;height:3px;border-radius:2px;background:var(--kamien);opacity:.5;margin:0 auto 14px}
 .plakietka{display:inline-block;font-size:10.5px;letter-spacing:.06em;color:var(--zrodlo);border:1px solid var(--zrodlo);border-radius:2px;padding:2px 6px;margin-bottom:9px}
 .panel h2{font-family:Bitter,Georgia,serif;font-weight:700;font-size:22px;line-height:1.2;letter-spacing:-.015em}
 .meta{font-size:12.5px;color:var(--kamien);margin-top:5px}
-.panel p{font-size:14.5px;line-height:1.6;margin-top:13px;max-width:60ch;color:rgba(238,242,238,.88)}
+.panel p{font-size:14.5px;line-height:1.62;margin-top:13px;max-width:62ch;color:rgba(238,242,238,.88)}
+.wiedz{
+  margin-top:14px;padding:11px 13px;border-left:2px solid var(--zrodlo);
+  background:rgba(156,74,34,.09);font-size:13.5px;line-height:1.55;max-width:62ch;
+}
 .dystans{display:flex;align-items:baseline;gap:9px;margin-top:15px;padding-top:14px;border-top:1px solid var(--linia)}
 .dystans strong{font-family:Bitter,Georgia,serif;font-size:26px;font-weight:700}
 .dystans span{font-size:12.5px;color:var(--kamien)}
@@ -134,7 +154,6 @@ body{
 .gps svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8}
 .ja{width:16px;height:16px;border-radius:50%;background:#4FA3FF;border:2.5px solid #fff;box-shadow:0 0 0 6px rgba(79,163,255,.22)}
 
-/* ---------- komunikaty ---------- */
 .info{
   position:absolute;left:14px;right:14px;top:50%;z-index:9;transform:translateY(-50%);
   background:var(--las);border:1px solid var(--zrodlo);border-radius:4px;
@@ -154,15 +173,15 @@ body{
 <div class="start" id="start">
   <h1>Tylicz</h1>
   <div class="pasek"><i></i></div>
-  <p id="start-opis">Wczytywanie mapy</p>
+  <p id="start-opis">Dawne miasteczko biskupie, siedlisko konfederatów barskich</p>
 </div>
 
 <div class="gora">
-  <div class="znak">Tylicz <span>574 m n.p.m.</span></div>
-  <div class="sezon" role="group" aria-label="Pora roku">
-    <button type="button" data-sezon="lato" aria-pressed="true">Lato</button>
-    <button type="button" data-sezon="zima" aria-pressed="false">Zima</button>
+  <div class="rzad">
+    <div class="znak">Tylicz <span>575 m n.p.m.</span></div>
+    <button class="oto" id="oto" type="button">O Tyliczu</button>
   </div>
+  <div class="tematy" id="tematy" role="group" aria-label="Temat"></div>
 </div>
 
 <button class="gps" id="gps" type="button" aria-label="Pokaż moją pozycję">
@@ -184,82 +203,143 @@ body{
 <script src="vendor/maplibre-gl.js"></script>
 <script>
 /* ===================================================================
-   DANE — tu edytujesz treść.
+   TREŚĆ — wszystko, co edytujesz, jest w tej sekcji.
 
-   UWAGA: współrzędne poza rynkiem to SZACUNKI, do poprawienia.
-   Wejdź na adres z ?edit=1 — kliknięcie w mapę kopiuje "lat, lng".
-
-   sezon: 'lato' | 'zima' | 'caly'
+   UWAGA: współrzędne poza rynkiem to SZACUNKI. Dopisz ?edit=1 do
+   adresu — kliknięcie w mapę kopiuje gotową linijkę do schowka.
    =================================================================== */
 
-const CENTRUM = [21.0254, 49.3956];   // rynek w Tyliczu [lng, lat]
+const CENTRUM = [21.0254, 49.3956];               // rynek [lng, lat]
+const RAMY    = [[20.96, 49.35], [21.10, 49.44]]; // poza to nie wyjedziesz
 
-/* Ramy mapy: Tylicz z Mochnaczką, Muszynką, przejściem granicznym
-   i wschodnim skrajem Krynicy. Około 10 na 10 km.
-   Poza ten prostokąt nie da się wyjechać ani oddalić — mniej pobranych
-   kafelków i nikt nie ogląda przypadkiem Wielkopolski. */
-const RAMY = [[20.96, 49.35], [21.10, 49.44]];   // [[SW],[NE]]
+const KATEGORIE = {
+  zabytek:     {barwa:'#C29A45', nazwa:'Zabytek',         ikona:'M12 2.5l1.7 3.5 3.8.6-2.8 2.7.7 3.8L12 11.3 8.6 13.1l.7-3.8-2.8-2.7 3.8-.6z'},
+  konfederaci: {barwa:'#94413A', nazwa:'Konfederaci',     ikona:'M6 3v18M6 4h11l-2.2 3.4L17 11H6z'},
+  przyroda:    {barwa:'#4E8C5A', nazwa:'Przyroda',        ikona:'M12 3l4.5 7h-2.6l3.6 6H6.5l3.6-6H7.5zM11 16h2v5h-2z'},
+  woda:        {barwa:'#3A7CA5', nazwa:'Wody mineralne',  ikona:'M12 3s5.5 6.3 5.5 10.2A5.5 5.5 0 016.5 13.2C6.5 9.3 12 3 12 3z'},
+  narty:       {barwa:'#6F8FA8', nazwa:'Narty',           ikona:'M3 20h18M5 5l7 13M10 4l7 14M17.5 6a1.6 1.6 0 100-3.2 1.6 1.6 0 000 3.2z'},
+  rodzina:     {barwa:'#B5763E', nazwa:'Z dziećmi',       ikona:'M12 3.5a2.8 2.8 0 110 5.6 2.8 2.8 0 010-5.6zM5.5 21v-3a4 4 0 014-4h5a4 4 0 014 4v3z'},
+  widok:       {barwa:'#6E7671', nazwa:'Punkt widokowy',  ikona:'M2.5 19l6.5-10.5 3.6 5.5 2.9-4L21.5 19z'}
+};
+
+const TEMATY = [
+  {id:'wszystko',    nazwa:'Wszystko'},
+  {id:'konfederaci', nazwa:'Śladami konfederatów'},
+  {id:'woda',        nazwa:'Woda i mofety'},
+  {id:'zabytki',     nazwa:'Zabytki'},
+  {id:'zima',        nazwa:'Zima'},
+  {id:'rodzina',     nazwa:'Z dziećmi'}
+];
 
 const POI = [
   {
-    id:'tyliczski', nazwa:'TYLICZ.ski', kat:'Stacja narciarska',
-    lat:49.3985, lng:21.0196, sezon:'zima', partner:true,
-    www:'https://tylicz.ski',
+    id:'tyliczski', nazwa:'TYLICZ.ski', kat:'narty', tematy:['zima'],
+    lat:49.3985, lng:21.0196, partner:true, www:'https://tylicz.ski',
     opis:'Największa stacja w Tyliczu — ponad 6 km tras o długości od 150 do 1200 m, wszystkie naśnieżane, ratrakowane i oświetlone po zmierzchu. Osobne poletko z taśmą SunKid i przedszkole narciarskie dla najmłodszych. Trasy 1 i 7 dla zaawansowanych, 2, 5 i 6 dla średnich.'
   },
   {
-    id:'masterski', nazwa:'Centrum Master-Ski', kat:'Stacja narciarska',
-    lat:49.3948, lng:21.0288, sezon:'zima',
-    opis:'Trzy wyciągi i dziesięć tras na północnym stoku, 680 m n.p.m., w samym centrum wsi. Łagodne i szerokie zjazdy — stacja nastawiona na rodziny i naukę jazdy. Stok oświetlony i naśnieżany.'
+    id:'kosciol', nazwa:'Kościół św. Piotra i Pawła', kat:'zabytek', tematy:['zabytki','konfederaci'],
+    lat:49.3951, lng:21.0262,
+    opis:'Drewniany, wzniesiony w 1612 r. z fundacji biskupa krakowskiego Piotra Tylickiego, konsekrowany dopiero pół wieku później. Konstrukcja zrębowa, jedna nawa, barokowa wieżyczka sygnaturkowa nad dachem. W prezbiterium trzy rokokowe ołtarze z drugiej połowy XVIII w., w głównym obraz Matki Boskiej Tylickiej z przełomu XVI i XVII w. Przed kościołem dzwonnica z dzwonem z 1665 r.',
+    wiedz:'Wisi tu obraz świętej Barbary, patronki artylerzystów — według przekazów prywatny obraz Kazimierza Pułaskiego, który woził go ze sobą i wieszał w namiocie. Zostawił go tylickiemu kościołowi jako wotum. Chrzcielnica pochodzi ze szkoły Wita Stwosza, a krucyfiks rzeźbiony w jednym pniu jest jeszcze czternastowieczny.'
   },
   {
-    id:'mofeta', nazwa:'Mofeta tylicka', kat:'Osobliwość przyrodnicza',
-    lat:49.3908, lng:21.0331, sezon:'lato',
-    opis:'Jedna z największych mofet w Europie — jedenaście połączonych kręgów, z których bulgocze dwutlenek węgla. W każdym kręgu woda smakuje inaczej. W latach 60. hodowano tu glony na pokarm dla radzieckich kosmonautów; oficjalnie miała to być pasza dla zwierząt. Udostępniona zwiedzającym w 2011 r., na terenie osady „Domki w Lesie”.'
+    id:'cerkiew', nazwa:'Cerkiew św. Kosmy i Damiana', kat:'zabytek', tematy:['zabytki'],
+    lat:49.3963, lng:21.0241,
+    opis:'Drewniana cerkiew greckokatolicka z lat 1738–1744, w typie zachodniołemkowskim: trójdzielna bryła, trzy wieże, wieża główna o konstrukcji słupowej. W środku osiemnastowieczny ikonostas i późnobarokowy ołtarz z ikoną Matki Bożej w drewnianej sukience. Dziś służy jako kościół cmentarny.',
+    wiedz:'Polichromia z 1938 r. powstała na 950-lecie Chrztu Rusi — święte Olga i Włodzimierz wzorowane są na ikonach z kijowskiego Soboru św. Włodzimierza. W nawie wisi obraz Chrystusa w Ogrójcu z widocznym śladem po kuli, wystrzelonej przez słowackich żołnierzy w pierwszych dniach września 1939 r.'
   },
   {
-    id:'kosciol', nazwa:'Kościół św. Piotra i Pawła', kat:'Zabytek',
-    lat:49.3951, lng:21.0262, sezon:'caly',
-    opis:'Drewniany kościół z 1612 r., postawiony przez biskupa Piotra Tylickiego na fundamentach świątyni z 1363 r. Ołtarz główny rokokowy, z drugiej połowy XVIII wieku.'
+    id:'rynek', nazwa:'Rynek', kat:'zabytek', tematy:['zabytki','konfederaci'],
+    lat:49.3956, lng:21.0254,
+    opis:'Czworoboczny plac z promieniście odchodzącymi uliczkami — zachowany średniowieczny układ miasteczka. Nawierzchnia od wieków z kocich łbów, od strony kościoła murowana kapliczka z 1808 r. Odbywały się tu cotygodniowe targi i cztery jarmarki rocznie.',
+    wiedz:'Górę po południowej stronie do dziś nazywa się Szubienicą, a jej zbocza Łaskami. Tylicz miał własne sądownictwo i wyroki wykonywał u siebie.'
   },
   {
-    id:'cerkiew', nazwa:'Cerkiew łemkowska', kat:'Zabytek',
-    lat:49.3963, lng:21.0241, sezon:'caly',
-    opis:'Drewniana cerkiew z 1743 r., dawna świątynia greckokatolickiej parafii obejmującej także Muszynkę. Jeden z najlepiej zachowanych obiektów drewnianej architektury sakralnej w okolicy.'
+    id:'muzeum', nazwa:'Muzeum Dziejów Tylicza', kat:'konfederaci', tematy:['konfederaci','zabytki'],
+    lat:49.3958, lng:21.0251,
+    opis:'Mieści się w budynku dawnego ratusza przy rynku. Kilka sal z pamiątkami po konfederacji barskiej, galeria rzeźb i obrazów tylickich artystów, stroje regionalne — polskie i łemkowskie.',
+    wiedz:'W dawnym ratuszu obradował sąd kryminalny Miastka. Dziś w tym samym miejscu działa wiejski dom kultury.'
   },
   {
-    id:'rynek', nazwa:'Rynek', kat:'Układ urbanistyczny',
-    lat:49.3956, lng:21.0254, sezon:'caly',
-    opis:'Czworoboczny rynek z odchodzącymi prostopadle uliczkami — pamiątka po czasach, gdy Tylicz był miasteczkiem z prawem do jarmarków, a w ratuszu obradował sąd kryminalny. Nawierzchnia od wieków z kocich łbów. Od strony kościoła murowana kapliczka z 1808 r.'
+    id:'huzary', nazwa:'Huzary (863 m)', kat:'widok', tematy:['konfederaci'],
+    lat:49.4070, lng:21.0030,
+    opis:'Szczyt nad Tyliczem, po łemkowsku Czerteż, czyli wykarczowany obszar. Wyjście z końca ulicy Biskupa Tylickiego, przez Szwarcową: dwie godziny w górę, godzina czterdzieści z powrotem. Z pierwszego wzniesienia panorama Tylicza, Muszynki, Przełęczy Tylickiej i słowackich gór na horyzoncie.',
+    wiedz:'Nazwa wzięła się od węgierskich huzarów z prywatnej gwardii Pułaskiego, którzy odznaczyli się tu w bitwie z Rosjanami w 1770 r. Jeszcze przed wojną wyorano na zboczu szablę z datą 1747, znajdowano też osiemnastowieczny granat armatni.'
   },
   {
-    id:'zrodlo', nazwa:'Zdrój Główny', kat:'Źródło mineralne',
-    lat:49.3944, lng:21.0270, sezon:'lato',
-    opis:'Szczawa znana miejscowym od stuleci, opisana naukowo w 1836 r. przez geologa Ludwika Zejsznera. Źródła i wycieki wód mineralnych skupiają się w dolinach potoków Muszynka, Bradowiec i Syhowny.'
+    id:'kopiec', nazwa:'Kopiec Pułaskiego', kat:'konfederaci', tematy:['konfederaci'],
+    lat:49.4045, lng:20.9975,
+    opis:'Siedmiometrowy kopiec na zboczu Huzarów, przy drodze z Krynicy do Tylicza. Na szczycie pomnik w kształcie graniastosłupa z orłem zrywającym się do lotu.',
+    wiedz:'Usypany staraniem doktora Franciszka Kmietowicza, burmistrza Krynicy, i odsłonięty 25 sierpnia 1929 r. W czasach PRL temat konfederacji spychano na margines, bo była to wojna z Rosją.'
   },
   {
-    id:'farmalama', nazwa:'Farma Lama', kat:'Agroturystyka',
-    lat:49.3925, lng:21.0215, sezon:'lato',
-    opis:'Mini zoo z lamami i alpakami, jazda konna, pobyt na wsi. Punkt obowiązkowy, jeśli jedziesz z dziećmi.'
+    id:'okopy', nazwa:'Okopy Konfederatów Barskich', kat:'konfederaci', tematy:['konfederaci'],
+    lat:49.3690, lng:21.0580,
+    opis:'Warowny obóz na grzbiecie góry Jawor nad Muszynką, usypany wiosną 1769 r. nad starym szlakiem handlowym przez Przełęcz Tylicką, żeby kontrolować przejście. Ponad 8400 m² — największe założenie konfederackie na Sądecczyźnie, przez pewien czas centralny ośrodek administracyjny konfederacji. Od 1963 r. rezerwat przyrodniczo-historyczny.',
+    wiedz:'Pułaski przybył tu 26 września 1769 r. i wrócił w lipcu 1770. Gdy Rosjanie uderzyli, Austriacy wbrew umowie przepuścili ich przez granicę. Nieprzygotowany do obrony szaniec padł, Polacy stracili 179 ludzi.'
   },
   {
-    id:'granica', nazwa:'Przejście Muszynka – Kurov', kat:'Granica',
-    lat:49.3745, lng:21.0490, sezon:'caly',
-    opis:'Turystyczne przejście na Słowację, około 3,7 km od rynku. Naturalny cel wycieczki rowerowej lub pieszej — po drugiej stronie zaczyna się Szarysz.'
+    id:'mofeta', nazwa:'Mofeta tylicka', kat:'przyroda', tematy:['woda','rodzina'],
+    lat:49.3908, lng:21.0331,
+    opis:'Największa mofeta w Karpatach. Jedenaście kręgów, każdy około metra średnicy i metra głębokości, a w nich blisko pięćdziesiąt bulgotek i dychawek, którymi z ziemi uchodzi dwutlenek węgla. W każdym kręgu woda smakuje inaczej. Udostępniona zwiedzającym w 2011 r., na terenie osady „Domki w Lesie”.',
+    wiedz:'W latach sześćdziesiątych hodowano tu glony na pokarm dla radzieckich kosmonautów. Oficjalnie miała to być pasza dla zwierząt.'
+  },
+  {
+    id:'zdroj', nazwa:'Zdrój Główny i Park Zdrojowy', kat:'woda', tematy:['woda','rodzina'],
+    lat:49.3938, lng:21.0285,
+    opis:'Źródło szczawy zabudowane stylową pijalnią na lewym brzegu Muszynki. Woda wodorowęglanowo-wapniowo-magnezowa, z żelazem i dwutlenkiem węgla. Wokół park z placem zabaw i siłownią plenerową.',
+    wiedz:'Pierwsza wzmianka o źródle pochodzi z Księgi Miasta Tylicza z 1753 r. Zatrzymywały się przy nim karawany kupieckie ciągnące z Węgier do Sącza i Krakowa. Tylicz ma ponad osiemnaście udokumentowanych źródeł mineralnych.'
+  },
+  {
+    id:'rakowsko', nazwa:'Ścieżka „Na Rakowsku”', kat:'przyroda', tematy:['woda','rodzina'],
+    lat:49.3985, lng:21.0105,
+    opis:'Ścieżka przyrodniczo-edukacyjna: cztery kilometry i dziewięć przystanków tematycznych, prowadzona przez gminę wspólnie z Leśnym Zakładem Doświadczalnym. Zaczyna się przy źródełku dwa kilometry od centrum, zwanym Źródłem Wędrowców, i biegnie przez Bradowiec do przełomu Muszynki. Kończy się przy dawnym kamieniołomie.',
+    wiedz:'Przez Przełęcz Tylicką zalatują tu owady z cieplejszej, południowej strony Karpat. Trafia się nadobnica alpejska — rzadka, popielatobłękitna kózka z czarnymi plamami.'
+  },
+  {
+    id:'przelecz', nazwa:'Przełęcz Tylicka (683 m)', kat:'widok', tematy:['konfederaci'],
+    lat:49.3760, lng:21.0480,
+    opis:'Najniższe przejście w tej części Karpat, którym od średniowiecza szedł szlak handlowy na Węgry, do Bardiowa. Przy dawnym przejściu granicznym Muszynka–Kurov stoi altanka. Odcinek biegnący wzdłuż granicy ze Słowacją uchodzi za najładniejszy fragment tutejszych szlaków.',
+    wiedz:'To przełęcz dała Tyliczowi rację bytu. Osada Ornawa powstała w XIII w. właśnie przy tym trakcie, a handel z Węgrami utrzymywał miasteczko przez kilkaset lat.'
+  },
+  {
+    id:'masterski', nazwa:'Centrum Master-Ski', kat:'narty', tematy:['zima'],
+    lat:49.3948, lng:21.0288,
+    opis:'Trzy wyciągi i dziesięć tras na północnym stoku, 680 m n.p.m., w samym centrum wsi. Łagodne i szerokie zjazdy, stok oświetlony i naśnieżany. Stacja nastawiona na rodziny i naukę jazdy.'
+  },
+  {
+    id:'farmalama', nazwa:'Farma Lama', kat:'rodzina', tematy:['rodzina'],
+    lat:49.3925, lng:21.0215,
+    opis:'Stadnina z mini zoo — konie, kozy, krowy, owce i kucyki dla najmłodszych. Jazda konna na odkrytej arenie i w krytej ujeżdżalni, dla zaawansowanych wyjazdy w Beskid. Zimą kuligi i ogniska.'
+  },
+  {
+    id:'imieniamaryi', nazwa:'Kościół Imienia Maryi', kat:'zabytek', tematy:['zabytki'],
+    lat:49.3948, lng:21.0267,
+    opis:'Nowa świątynia parafialna tuż obok drewnianego kościółka. Murowana z cegły i kamienia, ale bryłą świadomie nawiązuje do drewnianych kościołów i cerkwi regionu. Obok stoi Golgota.'
   }
 ];
+
+const O_TYLICZU = {
+  meta:'Dawne miasteczko · Beskid Sądecki',
+  akapity:[
+    'Zaczęło się od przełęczy. Przez Przełęcz Tylicką, najniższe przejście w tej części Karpat, biegł średniowieczny szlak handlowy na Węgry — i przy nim w XIII wieku powstała osada Ornawa. W 1363 r. Kazimierz Wielki nadał jej prawa miejskie i nazwę Miastko.',
+    'W październiku 1410 r. wojska węgierskie Ścibora ze Ściborzyc spaliły miasto doszczętnie. Podnosiło się z tego dwa stulecia, aż 26 czerwca 1612 r. biskup krakowski Piotr Tylicki nadał mu prawa miejskie powtórnie, razem z herbem, cotygodniowymi targami i czterema jarmarkami rocznie. Od jego nazwiska miasteczko nazywa się dziś Tylicz.',
+    'Najgłośniejszy rozdział to konfederacja barska. Nad pobliską Muszynką konfederaci usypali w 1769 r. największy obóz warowny na Sądecczyźnie, a Tylicz stał się ich siedliskiem. Kazimierz Pułaski bywał tu dwukrotnie, stoczył bitwę na zboczach góry nazwanej potem Huzarami i zostawił tylickiemu kościołowi swój obraz świętej Barbary.',
+    'Drugie bogactwo leży pod ziemią: ponad osiemnaście źródeł mineralnych, rozlewnia wody i największa mofeta w Karpatach — jedenaście kręgów, w których bulgocze dwutlenek węgla wydobywający się z głębi.',
+    'Praw miejskich Tylicz już nie ma. Został układ urbanistyczny miasteczka z czworobocznym rynkiem, dwie drewniane świątynie, kotlina między Szwarcową a Łanem i dwie stacje narciarskie na stokach.'
+  ]
+};
 
 /* =================================================================== */
 
 const nietDrgania = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-let sezon = 'lato', wybrany = null, pinezki = {}, mojaPozycja = null,
+let temat = 'wszystko', wybrany = null, pinezki = {}, mojaPozycja = null,
     znacznikJa = null, obserwator = null, dojechalo = false;
 
 const $ = s => document.querySelector(s);
 const panel = $('#panel');
 
-/* Start od razu na docelowym kadrze, tylko bez pochylenia.
-   Przelot z wysokiego zoomu ciągnął kafelki z pięciu poziomów naraz. */
 const map = new maplibregl.Map({
   container:'mapa',
   style:'https://tiles.openfreemap.org/styles/liberty',
@@ -278,47 +358,53 @@ map.on('load', () => {
       'sky-horizon-blend':.7,'horizon-fog-blend':.5,'fog-ground-blend':.05
     });
   }
-  dodajBudynki();
+  const wektor = zrodloWektorowe();
+  dodajBudynki(wektor);
+  wyroznijSciezki(wektor);
+  nazwyUlic();
+  szczyty(wektor);
   rysujPinezki();
+  budujTematy();
   budujTasme();
 });
 
-/* Rzeźba dopiero po wyrysowaniu płaskiej mapy — inaczej DEM i wektory
-   biją się o to samo łącze i przez kilka sekund nie widać niczego. */
 map.once('idle', wlaczTeren);
-setTimeout(() => { if(!dojechalo) wlaczTeren(); }, 5000);   // gdyby sieć przycięła
+setTimeout(() => { if(!dojechalo) wlaczTeren(); }, 5000);
 
 function wlaczTeren(){
   if(dojechalo) return;
   dojechalo = true;
-
   $('#start').dataset.koniec = '1';
 
   try{
     map.addSource('nmt', {
       type:'raster-dem',
       tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-      encoding:'terrarium', tileSize:256,
-      maxzoom:12,              // z12 wystarcza na dolinę; z15 to był kilkukrotny narzut
+      encoding:'terrarium', tileSize:256, maxzoom:12,
       attribution:'Rzeźba terenu: AWS Terrain Tiles'
     });
     map.setTerrain({source:'nmt', exaggeration:1.35});
   }catch(e){ console.warn('Brak rzeźby terenu:', e); }
 
-  if(!nietDrgania) map.easeTo({pitch:60, zoom:15.35, duration:2400});
-  else map.jumpTo({pitch:60});
+  if(nietDrgania){ map.jumpTo({pitch:60}); pokazOTyliczu(); return; }
+  map.easeTo({pitch:60, zoom:15.35, duration:2400});
+  setTimeout(pokazOTyliczu, 2600);
 }
 
-function dodajBudynki(){
-  const zrodla = map.getStyle().sources;
-  const wektor = Object.keys(zrodla).find(k => zrodla[k].type === 'vector');
-  if(!wektor) return;
-  const etykieta = map.getStyle().layers.find(l => l.type === 'symbol');
+const zrodloWektorowe = () => {
+  const z = map.getStyle().sources;
+  return Object.keys(z).find(k => z[k].type === 'vector');
+};
+const pierwszySymbol = () => {
+  const l = map.getStyle().layers.find(x => x.type === 'symbol');
+  return l ? l.id : undefined;
+};
 
+function dodajBudynki(wektor){
+  if(!wektor) return;
   try{
     map.addLayer({
-      id:'bryly', type:'fill-extrusion', source:wektor, 'source-layer':'building',
-      minzoom:14,
+      id:'bryly', type:'fill-extrusion', source:wektor, 'source-layer':'building', minzoom:14,
       paint:{
         'fill-extrusion-color':[
           'interpolate',['linear'],['coalesce',['get','render_height'],6],
@@ -328,15 +414,85 @@ function dodajBudynki(){
         'fill-extrusion-base':['coalesce',['get','render_min_height'],0],
         'fill-extrusion-opacity':.92
       }
-    }, etykieta ? etykieta.id : undefined);
+    }, pierwszySymbol());
   }catch(e){ console.warn('Brak warstwy budynków:', e); }
+}
+
+/* Ścieżki i drogi leśne przerywaną kreską — dzięki temu mapa czyta się
+   jak turystyczna, a nie jak samochodowa. */
+function wyroznijSciezki(wektor){
+  if(!wektor) return;
+  try{
+    map.addLayer({
+      id:'szlaki', type:'line', source:wektor, 'source-layer':'transportation', minzoom:13,
+      filter:['match',['get','class'],['path','track'],true,false],
+      layout:{'line-cap':'round'},
+      paint:{
+        'line-color':'#8A5A3B',
+        'line-width':['interpolate',['linear'],['zoom'],13,1.1,16,2.4],
+        'line-dasharray':[2,1.6],
+        'line-opacity':.75
+      }
+    }, pierwszySymbol());
+  }catch(e){ console.warn('Brak warstwy ścieżek:', e); }
+}
+
+/* Styl pokazuje nazwy ulic dopiero bardzo blisko i bardzo drobno. */
+function nazwyUlic(){
+  map.getStyle().layers.forEach(l => {
+    if(l.type !== 'symbol' || l['source-layer'] !== 'transportation_name') return;
+    try{
+      map.setLayerZoomRange(l.id, 14, 24);
+      map.setLayoutProperty(l.id, 'text-size',
+        ['interpolate',['linear'],['zoom'],14,10.5,17,13.5]);
+      map.setPaintProperty(l.id, 'text-halo-color', 'rgba(255,255,255,.92)');
+      map.setPaintProperty(l.id, 'text-halo-width', 1.5);
+    }catch(e){ /* część warstw nie ma tych właściwości */ }
+  });
+}
+
+/* Szczyty z wysokością — w górach to podstawowa informacja na mapie. */
+function szczyty(wektor){
+  if(!wektor) return;
+  map.getStyle().layers.forEach(l => {
+    if(l['source-layer'] === 'mountain_peak'){
+      try{ map.setLayoutProperty(l.id, 'visibility', 'none'); }catch(e){}
+    }
+  });
+  try{
+    map.addLayer({
+      id:'szczyty', type:'symbol', source:wektor, 'source-layer':'mountain_peak', minzoom:13,
+      layout:{
+        'text-field':['concat',['get','name'],'\n',['to-string',['get','ele']],' m'],
+        'text-font':['Noto Sans Regular'],
+        'text-size':11.5,
+        'text-offset':[0,.6],
+        'text-anchor':'top',
+        'symbol-sort-key':['-',0,['to-number',['coalesce',['get','ele'],0]]]
+      },
+      paint:{
+        'text-color':'#4A5450',
+        'text-halo-color':'rgba(255,255,255,.9)',
+        'text-halo-width':1.5
+      }
+    });
+  }catch(e){ console.warn('Brak warstwy szczytów:', e); }
+}
+
+function ikonaSVG(kat, rozmiar){
+  const k = KATEGORIE[kat] || KATEGORIE.widok;
+  return '<svg viewBox="0 0 24 24" width="' + rozmiar + '" height="' + rozmiar + '">' +
+         '<path d="' + k.ikona + '" fill="none" stroke="#fff" stroke-width="2" ' +
+         'stroke-linejoin="round" stroke-linecap="round"/></svg>';
 }
 
 function rysujPinezki(){
   POI.forEach(p => {
+    const k = KATEGORIE[p.kat] || KATEGORIE.widok;
     const el = document.createElement('div');
     el.className = 'pin' + (p.partner ? ' partner' : '');
-    el.innerHTML = '<i></i>';
+    el.innerHTML = '<i style="background:' + (p.partner ? '#9C4A22' : k.barwa) + '">' +
+                   ikonaSVG(p.kat, p.partner ? 17 : 12) + '</i>';
     el.setAttribute('role','button');
     el.setAttribute('aria-label', p.nazwa);
     el.addEventListener('click', ev => { ev.stopPropagation(); pokaz(p.id); });
@@ -346,22 +502,25 @@ function rysujPinezki(){
   filtruj();
 }
 
-function budujTasme(){
-  const t = $('#tasma');
+function budujTematy(){
+  const t = $('#tematy');
   t.innerHTML = '';
-  widoczne().forEach(p => {
+  TEMATY.forEach(x => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'kafel' + (p.partner ? ' partner' : '');
-    b.dataset.id = p.id;
-    b.innerHTML = `<b>${p.nazwa}</b><em>${p.kat}</em>`;
-    b.addEventListener('click', () => pokaz(p.id));
+    b.textContent = x.nazwa;
+    b.setAttribute('aria-pressed', String(x.id === temat));
+    b.addEventListener('click', () => {
+      temat = x.id;
+      budujTematy(); filtruj(); budujTasme();
+      panel.dataset.otwarty = '0';
+    });
     t.appendChild(b);
   });
 }
 
 const widoczne = () => POI
-  .filter(p => p.sezon === 'caly' || p.sezon === sezon)
+  .filter(p => temat === 'wszystko' || (p.tematy || []).includes(temat))
   .sort((a,b) => (b.partner ? 1 : 0) - (a.partner ? 1 : 0));
 
 function filtruj(){
@@ -369,13 +528,27 @@ function filtruj(){
   POI.forEach(p => { pinezki[p.id].getElement().style.display = ok.has(p.id) ? '' : 'none'; });
 }
 
+function budujTasme(){
+  const t = $('#tasma');
+  t.innerHTML = '';
+  widoczne().forEach(p => {
+    const k = KATEGORIE[p.kat] || KATEGORIE.widok;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'kafel';
+    b.style.borderLeftColor = p.partner ? '#9C4A22' : k.barwa;
+    b.innerHTML = '<b>' + p.nazwa + '</b><em>' +
+                  (p.partner ? 'Miejsce partnerskie' : k.nazwa) + '</em>';
+    b.addEventListener('click', () => pokaz(p.id));
+    t.appendChild(b);
+  });
+}
+
 function pokaz(id){
   const p = POI.find(x => x.id === id);
   if(!p) return;
   wybrany = id;
-  Object.entries(pinezki).forEach(([k,m]) =>
-    m.getElement().classList.toggle('wybrany', k === id && !POI.find(x=>x.id===k).partner));
-
+  Object.entries(pinezki).forEach(([k,m]) => m.getElement().classList.toggle('wybrany', k === id));
   map.easeTo({center:[p.lng, p.lat], zoom:16.6, pitch:62, offset:[0,-110],
               duration: nietDrgania ? 0 : 1100});
   rysujPanel(p);
@@ -383,40 +556,51 @@ function pokaz(id){
 }
 
 function rysujPanel(p){
-  const nav = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=walking`;
+  const k = KATEGORIE[p.kat] || KATEGORIE.widok;
+  const nav = 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng +
+              '&travelmode=walking';
+
+  let wys = null;
+  try{ wys = map.queryTerrainElevation([p.lng, p.lat]); }catch(e){}
+  const meta = k.nazwa + (wys ? ' · ' + Math.round(wys) + ' m n.p.m.' : '');
+
   let d;
   if(mojaPozycja){
     const m = odleglosc(mojaPozycja, [p.lng, p.lat]);
     const minuty = Math.max(1, Math.round(m / 78));
-    d = `<div class="dystans">
-           <strong>${m < 1000 ? Math.round(m/10)*10 + ' m' : (m/1000).toFixed(1) + ' km'}</strong>
-           <span>stąd, około ${minuty} min pieszo</span>
-         </div>`;
+    d = '<div class="dystans"><strong>' +
+        (m < 1000 ? Math.round(m/10)*10 + ' m' : (m/1000).toFixed(1) + ' km') +
+        '</strong><span>stąd, około ' + minuty + ' min pieszo</span></div>';
   }else{
-    d = `<div class="dystans"><span>Włącz lokalizację, żeby zobaczyć odległość stąd.</span></div>`;
+    d = '<div class="dystans"><span>Włącz lokalizację, żeby zobaczyć odległość stąd.</span></div>';
   }
 
-  $('#panel-tresc').innerHTML = `
-    ${p.partner ? '<div class="plakietka">Miejsce partnerskie</div>' : ''}
-    <h2>${p.nazwa}</h2>
-    <div class="meta">${p.kat}</div>
-    <p>${p.opis}</p>
-    ${d}
-    <div class="akcje">
-      <a class="glowna" href="${nav}" target="_blank" rel="noopener">Prowadź pieszo</a>
-      ${p.www ? `<a class="partnerska" href="${p.www}" target="_blank" rel="noopener">Strona i cennik</a>` : ''}
-      <button type="button" onclick="document.getElementById('panel').dataset.otwarty='0'">Zamknij</button>
-    </div>`;
+  $('#panel-tresc').innerHTML =
+    (p.partner ? '<div class="plakietka">Miejsce partnerskie</div>' : '') +
+    '<h2>' + p.nazwa + '</h2>' +
+    '<div class="meta">' + meta + '</div>' +
+    '<p>' + p.opis + '</p>' +
+    (p.wiedz ? '<div class="wiedz">' + p.wiedz + '</div>' : '') +
+    d +
+    '<div class="akcje">' +
+      '<a class="glowna" href="' + nav + '" target="_blank" rel="noopener">Prowadź pieszo</a>' +
+      (p.www ? '<a class="partnerska" href="' + p.www + '" target="_blank" rel="noopener">Strona i cennik</a>' : '') +
+      '<button type="button" onclick="document.getElementById(\'panel\').dataset.otwarty=\'0\'">Zamknij</button>' +
+    '</div>';
 }
 
-document.querySelectorAll('.sezon button').forEach(b => {
-  b.addEventListener('click', () => {
-    sezon = b.dataset.sezon;
-    document.querySelectorAll('.sezon button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-    filtruj(); budujTasme();
-    panel.dataset.otwarty = '0';
-  });
-});
+function pokazOTyliczu(){
+  wybrany = null;
+  Object.values(pinezki).forEach(m => m.getElement().classList.remove('wybrany'));
+  $('#panel-tresc').innerHTML =
+    '<h2>Tylicz</h2>' +
+    '<div class="meta">' + O_TYLICZU.meta + '</div>' +
+    O_TYLICZU.akapity.map(a => '<p>' + a + '</p>').join('') +
+    '<div class="akcje"><button type="button" ' +
+    'onclick="document.getElementById(\'panel\').dataset.otwarty=\'0\'">Zwiedzam</button></div>';
+  panel.dataset.otwarty = '1';
+}
+$('#oto').addEventListener('click', pokazOTyliczu);
 
 $('#gps').addEventListener('click', () => {
   const btn = $('#gps');
@@ -463,14 +647,12 @@ map.on('click', () => { panel.dataset.otwarty = '0'; });
 
 map.on('error', e => {
   console.error(e && e.error);
-  if(!dojechalo){
-    $('#start-opis').textContent = 'Mapa nie chce się wczytać. Sprawdź konsolę przeglądarki.';
-  }
+  if(!dojechalo) $('#start-opis').textContent = 'Mapa nie chce się wczytać. Sprawdź konsolę przeglądarki.';
 });
 
 if(new URLSearchParams(location.search).get('edit') === '1'){
   map.on('click', e => {
-    const s = `lat:${e.lngLat.lat.toFixed(5)}, lng:${e.lngLat.lng.toFixed(5)}`;
+    const s = 'lat:' + e.lngLat.lat.toFixed(5) + ', lng:' + e.lngLat.lng.toFixed(5);
     console.log(s);
     if(navigator.clipboard) navigator.clipboard.writeText(s);
     komunikat('Skopiowano:<br><br><code>' + s + '</code>');
