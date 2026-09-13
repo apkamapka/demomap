@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tylicz — przewodnik 3D</title>
+
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  /* paleta: szkło butelki po szczawie, żelaziste osady źródeł, świerk, śnieg */
+  --las:      #0E2A20;
+  --las-mgla: rgba(14,42,32,.92);
+  --szklo:    #1F6E5B;
+  --zrodlo:   #9C4A22;
+  --snieg:    #EEF2EE;
+  --kamien:   #7C857E;
+  --linia:    rgba(238,242,238,.14);
+  --sheet-h:  0px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--las)}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color:var(--snieg);
+  -webkit-font-smoothing:antialiased;
+}
+#mapa{position:absolute;inset:0}
+
+/* ---------- pasek górny ---------- */
+.gora{
+  position:absolute;top:0;left:0;right:0;z-index:5;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:calc(env(safe-area-inset-top) + 12px) 14px 12px;
+  pointer-events:none;
+}
+.znak{
+  pointer-events:auto;
+  background:var(--las-mgla);backdrop-filter:blur(10px);
+  border:1px solid var(--linia);border-radius:3px;
+  padding:7px 13px 8px;
+  font-family:Bitter,Georgia,serif;font-weight:700;font-size:16px;letter-spacing:-.01em;
+}
+.znak span{color:var(--kamien);font-weight:500;font-size:12px;margin-left:7px}
+
+.sezon{
+  pointer-events:auto;display:flex;
+  background:var(--las-mgla);backdrop-filter:blur(10px);
+  border:1px solid var(--linia);border-radius:3px;overflow:hidden;
+}
+.sezon button{
+  font:inherit;font-size:13px;color:var(--kamien);
+  background:none;border:0;padding:9px 15px;cursor:pointer;
+}
+.sezon button[aria-pressed="true"]{background:var(--szklo);color:var(--snieg)}
+.sezon button:focus-visible{outline:2px solid var(--snieg);outline-offset:-2px}
+
+/* ---------- pinezki ---------- */
+.pin{cursor:pointer;display:grid;place-items:center;transform-origin:50% 100%}
+.pin i{
+  display:block;width:15px;height:15px;border-radius:50%;
+  background:var(--szklo);border:2.5px solid var(--snieg);
+  box-shadow:0 2px 9px rgba(0,0,0,.5);
+}
+.pin.partner i{
+  width:26px;height:26px;background:var(--zrodlo);
+  border-width:3px;
+  box-shadow:0 0 0 5px rgba(156,74,34,.28), 0 3px 12px rgba(0,0,0,.55);
+}
+.pin.wybrany i{background:var(--snieg);border-color:var(--szklo)}
+
+/* ---------- taśma kafelków ---------- */
+.tasma{
+  position:absolute;left:0;right:0;bottom:0;z-index:5;
+  display:flex;gap:9px;overflow-x:auto;scroll-snap-type:x mandatory;
+  padding:10px 14px calc(env(safe-area-inset-bottom) + 14px);
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+  mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 14px),transparent);
+}
+.tasma::-webkit-scrollbar{display:none}
+.kafel{
+  scroll-snap-align:start;flex:0 0 auto;
+  background:var(--las-mgla);backdrop-filter:blur(10px);
+  border:1px solid var(--linia);border-radius:3px;
+  padding:9px 13px 10px;text-align:left;cursor:pointer;
+  font:inherit;color:var(--snieg);max-width:62vw;
+}
+.kafel b{display:block;font-family:Bitter,Georgia,serif;font-weight:700;font-size:14px;white-space:nowrap}
+.kafel em{display:block;font-style:normal;font-size:11.5px;color:var(--kamien);margin-top:2px}
+.kafel.partner{border-color:var(--zrodlo);border-left-width:3px}
+.kafel:focus-visible{outline:2px solid var(--snieg);outline-offset:2px}
+
+/* ---------- panel atrakcji ---------- */
+.panel{
+  position:absolute;left:0;right:0;bottom:0;z-index:7;
+  background:var(--las);border-top:1px solid var(--linia);
+  border-radius:10px 10px 0 0;
+  padding:16px 18px calc(env(safe-area-inset-bottom) + 18px);
+  transform:translateY(110%);transition:transform .28s cubic-bezier(.22,.7,.3,1);
+  max-height:72vh;overflow-y:auto;
+  box-shadow:0 -14px 44px rgba(0,0,0,.5);
+}
+.panel[data-otwarty="1"]{transform:translateY(0)}
+.uchwyt{width:34px;height:3px;border-radius:2px;background:var(--kamien);opacity:.5;margin:0 auto 14px}
+
+.plakietka{
+  display:inline-block;font-size:10.5px;letter-spacing:.06em;
+  color:var(--zrodlo);border:1px solid var(--zrodlo);
+  border-radius:2px;padding:2px 6px;margin-bottom:9px;
+}
+.panel h2{font-family:Bitter,Georgia,serif;font-weight:700;font-size:22px;line-height:1.2;letter-spacing:-.015em}
+.meta{font-size:12.5px;color:var(--kamien);margin-top:5px}
+.panel p{font-size:14.5px;line-height:1.6;margin-top:13px;max-width:60ch;color:rgba(238,242,238,.88)}
+
+.dystans{
+  display:flex;align-items:baseline;gap:9px;
+  margin-top:15px;padding-top:14px;border-top:1px solid var(--linia);
+}
+.dystans strong{font-family:Bitter,Georgia,serif;font-size:26px;font-weight:700}
+.dystans span{font-size:12.5px;color:var(--kamien)}
+
+.akcje{display:flex;gap:9px;margin-top:15px;flex-wrap:wrap}
+.akcje a,.akcje button{
+  font:inherit;font-size:14px;text-decoration:none;cursor:pointer;
+  padding:11px 17px;border-radius:3px;border:1px solid var(--linia);
+  background:none;color:var(--snieg);
+}
+.akcje .glowna{background:var(--szklo);border-color:var(--szklo)}
+.akcje .partnerska{background:var(--zrodlo);border-color:var(--zrodlo)}
+.akcje a:focus-visible,.akcje button:focus-visible{outline:2px solid var(--snieg);outline-offset:2px}
+
+/* ---------- lokalizacja ---------- */
+.gps{
+  position:absolute;right:14px;z-index:6;
+  bottom:calc(env(safe-area-inset-bottom) + 78px);
+  width:46px;height:46px;border-radius:50%;
+  background:var(--las-mgla);backdrop-filter:blur(10px);
+  border:1px solid var(--linia);color:var(--snieg);
+  display:grid;place-items:center;cursor:pointer;
+}
+.gps[data-akt="1"]{background:var(--szklo);border-color:var(--szklo)}
+.gps svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8}
+.ja{width:16px;height:16px;border-radius:50%;background:#4FA3FF;border:2.5px solid #fff;box-shadow:0 0 0 6px rgba(79,163,255,.22)}
+
+/* ---------- komunikaty ---------- */
+.info{
+  position:absolute;left:14px;right:14px;top:50%;z-index:9;
+  transform:translateY(-50%);
+  background:var(--las);border:1px solid var(--zrodlo);border-radius:4px;
+  padding:16px 18px;font-size:14px;line-height:1.55;display:none;
+}
+.info[data-widok="1"]{display:block}
+.info button{
+  font:inherit;font-size:13px;margin-top:12px;cursor:pointer;
+  background:none;border:1px solid var(--linia);color:var(--snieg);
+  padding:7px 13px;border-radius:3px;
+}
+
+.maplibregl-ctrl-attrib{font-size:10px}
+@media (prefers-reduced-motion:reduce){.panel{transition:none}}
+</style>
+</head>
+<body>
+
+<div id="mapa"></div>
+
+<div class="gora">
+  <div class="znak">Tylicz <span>574 m n.p.m.</span></div>
+  <div class="sezon" role="group" aria-label="Pora roku">
+    <button type="button" data-sezon="lato" aria-pressed="true">Lato</button>
+    <button type="button" data-sezon="zima" aria-pressed="false">Zima</button>
+  </div>
+</div>
+
+<button class="gps" id="gps" type="button" aria-label="Pokaż moją pozycję">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg>
+</button>
+
+<div class="tasma" id="tasma"></div>
+
+<section class="panel" id="panel" aria-live="polite">
+  <div class="uchwyt"></div>
+  <div id="panel-tresc"></div>
+</section>
+
+<div class="info" id="info">
+  <div id="info-tresc"></div>
+  <button type="button" onclick="document.getElementById('info').dataset.widok='0'">Zamknij</button>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+/* ===================================================================
+   DANE — tu edytujesz treść. Nic poza tą tablicą nie musi się zmieniać.
+
+   UWAGA: współrzędne poza centrum Tylicza to SZACUNKI. Trzeba je
+   poprawić. Otwórz stronę z ?edit=1 na końcu adresu — wtedy kliknięcie
+   w mapę kopiuje "lat, lng" do schowka i wypisuje w konsoli.
+
+   sezon: 'lato' | 'zima' | 'caly'
+   =================================================================== */
+
+const CENTRUM = [21.0254, 49.3956];   // rynek w Tyliczu [lng, lat]
+
+const POI = [
+  {
+    id:'tyliczski', nazwa:'TYLICZ.ski', kat:'Stacja narciarska',
+    lat:49.3985, lng:21.0196, sezon:'zima', partner:true,
+    www:'https://tylicz.ski',
+    opis:'Największa stacja w Tyliczu — ponad 6 km tras o długości od 150 do 1200 m, wszystkie naśnieżane, ratrakowane i oświetlone po zmierzchu. Osobne poletko z taśmą SunKid i przedszkole narciarskie dla najmłodszych. Trasy 1 i 7 dla zaawansowanych, 2, 5 i 6 dla średnich.'
+  },
+  {
+    id:'masterski', nazwa:'Centrum Master-Ski', kat:'Stacja narciarska',
+    lat:49.3948, lng:21.0288, sezon:'zima',
+    opis:'Trzy wyciągi i dziesięć tras na północnym stoku, 680 m n.p.m., w samym centrum wsi. Łagodne i szerokie zjazdy — stacja nastawiona na rodziny i naukę jazdy. Stok oświetlony i naśnieżany.'
+  },
+  {
+    id:'mofeta', nazwa:'Mofeta tylicka', kat:'Osobliwość przyrodnicza',
+    lat:49.3908, lng:21.0331, sezon:'lato',
+    opis:'Jedna z największych mofet w Europie — jedenaście połączonych kręgów, z których bulgocze dwutlenek węgla. W każdym kręgu woda smakuje inaczej. W latach 60. hodowano tu glony na pokarm dla radzieckich kosmonautów; oficjalnie miała to być pasza dla zwierząt. Udostępniona zwiedzającym w 2011 r., na terenie osady „Domki w Lesie”.'
+  },
+  {
+    id:'kosciol', nazwa:'Kościół św. Piotra i Pawła', kat:'Zabytek',
+    lat:49.3951, lng:21.0262, sezon:'caly',
+    opis:'Drewniany kościół z 1612 r., postawiony przez biskupa Piotra Tylickiego na fundamentach świątyni z 1363 r. Ołtarz główny rokokowy, z drugiej połowy XVIII wieku.'
+  },
+  {
+    id:'cerkiew', nazwa:'Cerkiew łemkowska', kat:'Zabytek',
+    lat:49.3963, lng:21.0241, sezon:'caly',
+    opis:'Drewniana cerkiew z 1743 r., dawna świątynia greckokatolickiej parafii obejmującej także Muszynkę. Jeden z najlepiej zachowanych obiektów drewnianej architektury sakralnej w okolicy.'
+  },
+  {
+    id:'rynek', nazwa:'Rynek', kat:'Układ urbanistyczny',
+    lat:49.3956, lng:21.0254, sezon:'caly',
+    opis:'Czworoboczny rynek z odchodzącymi prostopadle uliczkami — pamiątka po czasach, gdy Tylicz był miasteczkiem z prawem do jarmarków, a w ratuszu obradował sąd kryminalny. Nawierzchnia od wieków z kocich łbów. Od strony kościoła murowana kapliczka z 1808 r.'
+  },
+  {
+    id:'zrodlo', nazwa:'Zdrój Główny', kat:'Źródło mineralne',
+    lat:49.3944, lng:21.0270, sezon:'lato',
+    opis:'Szczawa znana miejscowym od stuleci, opisana naukowo w 1836 r. przez geologa Ludwika Zejsznera. Źródła i wycieki wód mineralnych skupiają się w dolinach potoków Muszynka, Bradowiec i Syhowny.'
+  },
+  {
+    id:'farmalama', nazwa:'Farma Lama', kat:'Agroturystyka',
+    lat:49.3925, lng:21.0215, sezon:'lato',
+    opis:'Mini zoo z lamami i alpakami, jazda konna, pobyt na wsi. Punkt obowiązkowy, jeśli jedziesz z dziećmi.'
+  },
+  {
+    id:'granica', nazwa:'Przejście Muszynka – Kurov', kat:'Granica',
+    lat:49.3745, lng:21.0490, sezon:'caly',
+    opis:'Turystyczne przejście na Słowację, około 3,7 km od rynku. Naturalny cel wycieczki rowerowej lub pieszej — po drugiej stronie zaczyna się Szarysz.'
+  }
+];
+
+/* =================================================================== */
+
+const nietDrgania = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let sezon = 'lato', wybrany = null, pinezki = {}, mojaPozycja = null, znacznikJa = null, obserwator = null;
+
+const $ = s => document.querySelector(s);
+const panel = $('#panel');
+
+const map = new maplibregl.Map({
+  container:'mapa',
+  style:'https://tiles.openfreemap.org/styles/liberty',
+  center:CENTRUM,
+  zoom: nietDrgania ? 15.2 : 11.4,
+  pitch: nietDrgania ? 60 : 0,
+  bearing: nietDrgania ? -22 : 0,
+  maxZoom:18.5,
+  attributionControl:{compact:true}
+});
+map.addControl(new maplibregl.NavigationControl({visualizePitch:true}), 'bottom-left');
+map.touchZoomRotate.enableRotation();
+
+map.on('load', () => {
+  // rzeźba terenu — bez tego cała reszta nie ma sensu w Beskidzie
+  try{
+    map.addSource('nmt', {
+      type:'raster-dem',
+      tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+      encoding:'terrarium', tileSize:256, maxzoom:15,
+      attribution:'Rzeźba terenu: AWS Terrain Tiles'
+    });
+    map.setTerrain({source:'nmt', exaggeration:1.35});
+  }catch(e){ console.warn('Brak rzeźby terenu:', e); }
+
+  if(map.setSky){
+    map.setSky({
+      'sky-color':'#8FB8C9','horizon-color':'#D6DCD4','fog-color':'#C9D2CB',
+      'sky-horizon-blend':.7,'horizon-fog-blend':.5,'fog-ground-blend':.05
+    });
+  }
+
+  dodajBudynki();
+  rysujPinezki();
+  budujTasme();
+
+  if(!nietDrgania){
+    setTimeout(() => map.easeTo({
+      center:CENTRUM, zoom:15.2, pitch:60, bearing:-22, duration:5200
+    }), 500);
+  }
+});
+
+/* Bryły budynków — nazwa źródła wektorowego zależy od stylu,
+   więc szukamy jej zamiast wpisywać na sztywno. */
+function dodajBudynki(){
+  const zrodla = map.getStyle().sources;
+  const wektor = Object.keys(zrodla).find(k => zrodla[k].type === 'vector');
+  if(!wektor) return;
+
+  const etykieta = map.getStyle().layers.find(l => l.type === 'symbol');
+
+  try{
+    map.addLayer({
+      id:'bryly', type:'fill-extrusion', source:wektor, 'source-layer':'building',
+      minzoom:14,
+      paint:{
+        'fill-extrusion-color':[
+          'interpolate',['linear'],['coalesce',['get','render_height'],6],
+          0,'#DDE3DC', 12,'#C4CDC4', 30,'#A9B4A9'
+        ],
+        'fill-extrusion-height':['coalesce',['get','render_height'],6],
+        'fill-extrusion-base':['coalesce',['get','render_min_height'],0],
+        'fill-extrusion-opacity':.92
+      }
+    }, etykieta ? etykieta.id : undefined);
+  }catch(e){ console.warn('Brak warstwy budynków:', e); }
+}
+
+function rysujPinezki(){
+  POI.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'pin' + (p.partner ? ' partner' : '');
+    el.innerHTML = '<i></i>';
+    el.setAttribute('role','button');
+    el.setAttribute('aria-label', p.nazwa);
+    el.addEventListener('click', ev => { ev.stopPropagation(); pokaz(p.id); });
+
+    pinezki[p.id] = new maplibregl.Marker({element:el, anchor:'bottom'})
+      .setLngLat([p.lng, p.lat]).addTo(map);
+  });
+  filtruj();
+}
+
+function budujTasme(){
+  const t = $('#tasma');
+  t.innerHTML = '';
+  widoczne().forEach(p => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'kafel' + (p.partner ? ' partner' : '');
+    b.dataset.id = p.id;
+    b.innerHTML = `<b>${p.nazwa}</b><em>${p.kat}</em>`;
+    b.addEventListener('click', () => pokaz(p.id));
+    t.appendChild(b);
+  });
+}
+
+const widoczne = () => POI
+  .filter(p => p.sezon === 'caly' || p.sezon === sezon)
+  .sort((a,b) => (b.partner ? 1 : 0) - (a.partner ? 1 : 0));
+
+function filtruj(){
+  const ok = new Set(widoczne().map(p => p.id));
+  POI.forEach(p => {
+    pinezki[p.id].getElement().style.display = ok.has(p.id) ? '' : 'none';
+  });
+}
+
+function pokaz(id){
+  const p = POI.find(x => x.id === id);
+  if(!p) return;
+  wybrany = id;
+
+  Object.entries(pinezki).forEach(([k,m]) =>
+    m.getElement().classList.toggle('wybrany', k === id && !POI.find(x=>x.id===k).partner));
+
+  map.easeTo({
+    center:[p.lng, p.lat], zoom:16.6, pitch:62,
+    offset:[0, -110], duration: nietDrgania ? 0 : 1100
+  });
+
+  rysujPanel(p);
+  panel.dataset.otwarty = '1';
+}
+
+function rysujPanel(p){
+  const nav = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=walking`;
+  let d = '';
+
+  if(mojaPozycja){
+    const m = odleglosc(mojaPozycja, [p.lng, p.lat]);
+    const minuty = Math.max(1, Math.round(m / 78));   // ~4,7 km/h pieszo
+    d = `<div class="dystans">
+           <strong>${m < 1000 ? Math.round(m/10)*10 + ' m' : (m/1000).toFixed(1) + ' km'}</strong>
+           <span>stąd, około ${minuty} min pieszo</span>
+         </div>`;
+  }else{
+    d = `<div class="dystans"><span>Włącz lokalizację, żeby zobaczyć odległość stąd.</span></div>`;
+  }
+
+  $('#panel-tresc').innerHTML = `
+    ${p.partner ? '<div class="plakietka">Miejsce partnerskie</div>' : ''}
+    <h2>${p.nazwa}</h2>
+    <div class="meta">${p.kat}</div>
+    <p>${p.opis}</p>
+    ${d}
+    <div class="akcje">
+      <a class="glowna" href="${nav}" target="_blank" rel="noopener">Prowadź pieszo</a>
+      ${p.www ? `<a class="partnerska" href="${p.www}" target="_blank" rel="noopener">Strona i cennik</a>` : ''}
+      <button type="button" onclick="document.getElementById('panel').dataset.otwarty='0'">Zamknij</button>
+    </div>`;
+}
+
+/* pora roku */
+document.querySelectorAll('.sezon button').forEach(b => {
+  b.addEventListener('click', () => {
+    sezon = b.dataset.sezon;
+    document.querySelectorAll('.sezon button').forEach(x =>
+      x.setAttribute('aria-pressed', String(x === b)));
+    filtruj();
+    budujTasme();
+    panel.dataset.otwarty = '0';
+  });
+});
+
+/* lokalizacja */
+$('#gps').addEventListener('click', () => {
+  const btn = $('#gps');
+
+  if(obserwator !== null){
+    navigator.geolocation.clearWatch(obserwator);
+    obserwator = null; mojaPozycja = null;
+    if(znacznikJa){ znacznikJa.remove(); znacznikJa = null; }
+    btn.dataset.akt = '0';
+    return;
+  }
+
+  if(!navigator.geolocation){ komunikat('Ta przeglądarka nie udostępnia lokalizacji.'); return; }
+
+  obserwator = navigator.geolocation.watchPosition(poz => {
+    mojaPozycja = [poz.coords.longitude, poz.coords.latitude];
+    btn.dataset.akt = '1';
+
+    if(!znacznikJa){
+      const el = document.createElement('div');
+      el.className = 'ja';
+      znacznikJa = new maplibregl.Marker({element:el}).setLngLat(mojaPozycja).addTo(map);
+      map.easeTo({center:mojaPozycja, zoom:16.2, pitch:60, duration:1200});
+    }else{
+      znacznikJa.setLngLat(mojaPozycja);
+    }
+
+    if(wybrany && panel.dataset.otwarty === '1') rysujPanel(POI.find(x => x.id === wybrany));
+  }, err => {
+    komunikat('Nie udało się ustalić pozycji. Lokalizacja działa tylko przez HTTPS — otwarcie pliku bezpośrednio z dysku (file://) jej nie uruchomi.<br><br>Kod błędu: ' + err.code);
+    btn.dataset.akt = '0';
+    obserwator = null;
+  }, {enableHighAccuracy:true, maximumAge:8000, timeout:12000});
+});
+
+function komunikat(html){
+  $('#info-tresc').innerHTML = html;
+  $('#info').dataset.widok = '1';
+}
+
+/* haversine, metry */
+function odleglosc(a, b){
+  const R = 6371000, rad = x => x * Math.PI / 180;
+  const dLat = rad(b[1] - a[1]), dLng = rad(b[0] - a[0]);
+  const h = Math.sin(dLat/2)**2 + Math.cos(rad(a[1])) * Math.cos(rad(b[1])) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+map.on('click', () => { panel.dataset.otwarty = '0'; });
+
+/* tryb poprawiania współrzędnych: dopisz ?edit=1 do adresu */
+if(new URLSearchParams(location.search).get('edit') === '1'){
+  map.on('click', e => {
+    const s = `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`;
+    console.log(s);
+    if(navigator.clipboard) navigator.clipboard.writeText(s);
+    komunikat('Skopiowano do schowka:<br><br><code>lat:' +
+      e.lngLat.lat.toFixed(5) + ', lng:' + e.lngLat.lng.toFixed(5) + '</code>');
+  });
+}
+</script>
+</body>
+</html>
