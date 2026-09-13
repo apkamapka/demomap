@@ -23,7 +23,7 @@
 
 :root{
   --las:      #0E2A20;
-  --las-mgla: rgba(14,42,32,.92);
+  --las-mgla: rgba(14,42,32,.94);
   --szklo:    #1F6E5B;
   --zrodlo:   #9C4A22;
   --snieg:    #EEF2EE;
@@ -60,7 +60,7 @@ body{
   padding:calc(env(safe-area-inset-top) + 12px) 14px 12px;pointer-events:none;
 }
 .znak{
-  pointer-events:auto;background:var(--las-mgla);backdrop-filter:blur(10px);
+  pointer-events:auto;background:var(--las-mgla);
   border:1px solid var(--linia);border-radius:3px;padding:7px 13px 8px;
   font-family:Bitter,Georgia,serif;font-weight:700;font-size:16px;letter-spacing:-.01em;
 }
@@ -69,7 +69,7 @@ body{
   color:var(--kamien);font-weight:400;font-size:11.5px;margin-left:7px;
 }
 .sezon{
-  pointer-events:auto;display:flex;background:var(--las-mgla);backdrop-filter:blur(10px);
+  pointer-events:auto;display:flex;background:var(--las-mgla);
   border:1px solid var(--linia);border-radius:3px;overflow:hidden;
 }
 .sezon button{font:inherit;font-size:13px;color:var(--kamien);background:none;border:0;padding:9px 15px;cursor:pointer}
@@ -92,7 +92,7 @@ body{
 }
 .tasma::-webkit-scrollbar{display:none}
 .kafel{
-  scroll-snap-align:start;flex:0 0 auto;background:var(--las-mgla);backdrop-filter:blur(10px);
+  scroll-snap-align:start;flex:0 0 auto;background:var(--las-mgla);
   border:1px solid var(--linia);border-radius:3px;padding:9px 13px 10px;
   text-align:left;cursor:pointer;font:inherit;color:var(--snieg);max-width:62vw;
 }
@@ -127,7 +127,7 @@ body{
 /* ---------- lokalizacja ---------- */
 .gps{
   position:absolute;right:14px;z-index:6;bottom:calc(env(safe-area-inset-bottom) + 78px);
-  width:46px;height:46px;border-radius:50%;background:var(--las-mgla);backdrop-filter:blur(10px);
+  width:46px;height:46px;border-radius:50%;background:var(--las-mgla);
   border:1px solid var(--linia);color:var(--snieg);display:grid;place-items:center;cursor:pointer;
 }
 .gps[data-akt="1"]{background:var(--szklo);border-color:var(--szklo)}
@@ -194,6 +194,12 @@ body{
 
 const CENTRUM = [21.0254, 49.3956];   // rynek w Tyliczu [lng, lat]
 
+/* Ramy mapy: Tylicz z Mochnaczką, Muszynką, przejściem granicznym
+   i wschodnim skrajem Krynicy. Około 10 na 10 km.
+   Poza ten prostokąt nie da się wyjechać ani oddalić — mniej pobranych
+   kafelków i nikt nie ogląda przypadkiem Wielkopolski. */
+const RAMY = [[20.96, 49.35], [21.10, 49.44]];   // [[SW],[NE]]
+
 const POI = [
   {
     id:'tyliczski', nazwa:'TYLICZ.ski', kat:'Stacja narciarska',
@@ -258,7 +264,8 @@ const map = new maplibregl.Map({
   container:'mapa',
   style:'https://tiles.openfreemap.org/styles/liberty',
   center:CENTRUM, zoom:15.2, pitch:0, bearing:-22,
-  maxZoom:18.5, fadeDuration:0,
+  maxBounds:RAMY, minZoom:13, maxZoom:18.5,
+  fadeDuration:0, refreshExpiredTiles:false,
   attributionControl:{compact:true}
 });
 map.addControl(new maplibregl.NavigationControl({visualizePitch:true}), 'bottom-left');
