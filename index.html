@@ -5,14 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tylicz — przewodnik 3D</title>
 
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
+<link rel="preconnect" href="https://s3.amazonaws.com" crossorigin>
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
 
 <style>
+@font-face{
+  font-family:Bitter;font-style:normal;font-weight:700;font-display:swap;
+  src:url(vendor/bitter-700-latin-ext.woff2) format('woff2');
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face{
+  font-family:Bitter;font-style:normal;font-weight:700;font-display:swap;
+  src:url(vendor/bitter-700-latin.woff2) format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
 :root{
-  /* paleta: szkło butelki po szczawie, żelaziste osady źródeł, świerk, śnieg */
   --las:      #0E2A20;
   --las-mgla: rgba(14,42,32,.92);
   --szklo:    #1F6E5B;
@@ -20,58 +29,57 @@
   --snieg:    #EEF2EE;
   --kamien:   #7C857E;
   --linia:    rgba(238,242,238,.14);
-  --sheet-h:  0px;
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:var(--las)}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  color:var(--snieg);
-  -webkit-font-smoothing:antialiased;
+  color:var(--snieg);-webkit-font-smoothing:antialiased;
 }
 #mapa{position:absolute;inset:0}
+
+/* ---------- ekran wczytywania ---------- */
+.start{
+  position:absolute;inset:0;z-index:20;background:var(--las);
+  display:grid;place-content:center;justify-items:center;gap:16px;text-align:center;
+  padding:24px;transition:opacity .45s ease;
+}
+.start[data-koniec="1"]{opacity:0;pointer-events:none}
+.start h1{font-family:Bitter,Georgia,serif;font-weight:700;font-size:30px;letter-spacing:-.02em}
+.start p{font-size:13.5px;color:var(--kamien);max-width:32ch;line-height:1.5}
+.pasek{width:150px;height:2px;background:var(--linia);overflow:hidden}
+.pasek i{display:block;width:40%;height:100%;background:var(--szklo);animation:suw 1.15s ease-in-out infinite}
+@keyframes suw{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+@media (prefers-reduced-motion:reduce){.pasek i{animation:none;width:100%}}
 
 /* ---------- pasek górny ---------- */
 .gora{
   position:absolute;top:0;left:0;right:0;z-index:5;
   display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:calc(env(safe-area-inset-top) + 12px) 14px 12px;
-  pointer-events:none;
+  padding:calc(env(safe-area-inset-top) + 12px) 14px 12px;pointer-events:none;
 }
 .znak{
-  pointer-events:auto;
-  background:var(--las-mgla);backdrop-filter:blur(10px);
-  border:1px solid var(--linia);border-radius:3px;
-  padding:7px 13px 8px;
+  pointer-events:auto;background:var(--las-mgla);backdrop-filter:blur(10px);
+  border:1px solid var(--linia);border-radius:3px;padding:7px 13px 8px;
   font-family:Bitter,Georgia,serif;font-weight:700;font-size:16px;letter-spacing:-.01em;
 }
-.znak span{color:var(--kamien);font-weight:500;font-size:12px;margin-left:7px}
-
+.znak span{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  color:var(--kamien);font-weight:400;font-size:11.5px;margin-left:7px;
+}
 .sezon{
-  pointer-events:auto;display:flex;
-  background:var(--las-mgla);backdrop-filter:blur(10px);
+  pointer-events:auto;display:flex;background:var(--las-mgla);backdrop-filter:blur(10px);
   border:1px solid var(--linia);border-radius:3px;overflow:hidden;
 }
-.sezon button{
-  font:inherit;font-size:13px;color:var(--kamien);
-  background:none;border:0;padding:9px 15px;cursor:pointer;
-}
+.sezon button{font:inherit;font-size:13px;color:var(--kamien);background:none;border:0;padding:9px 15px;cursor:pointer}
 .sezon button[aria-pressed="true"]{background:var(--szklo);color:var(--snieg)}
 .sezon button:focus-visible{outline:2px solid var(--snieg);outline-offset:-2px}
 
 /* ---------- pinezki ---------- */
 .pin{cursor:pointer;display:grid;place-items:center;transform-origin:50% 100%}
-.pin i{
-  display:block;width:15px;height:15px;border-radius:50%;
-  background:var(--szklo);border:2.5px solid var(--snieg);
-  box-shadow:0 2px 9px rgba(0,0,0,.5);
-}
-.pin.partner i{
-  width:26px;height:26px;background:var(--zrodlo);
-  border-width:3px;
-  box-shadow:0 0 0 5px rgba(156,74,34,.28), 0 3px 12px rgba(0,0,0,.55);
-}
+.pin i{display:block;width:15px;height:15px;border-radius:50%;background:var(--szklo);border:2.5px solid var(--snieg);box-shadow:0 2px 9px rgba(0,0,0,.5)}
+.pin.partner i{width:26px;height:26px;background:var(--zrodlo);border-width:3px;box-shadow:0 0 0 5px rgba(156,74,34,.28),0 3px 12px rgba(0,0,0,.55)}
 .pin.wybrany i{background:var(--snieg);border-color:var(--szklo)}
 
 /* ---------- taśma kafelków ---------- */
@@ -84,11 +92,9 @@ body{
 }
 .tasma::-webkit-scrollbar{display:none}
 .kafel{
-  scroll-snap-align:start;flex:0 0 auto;
-  background:var(--las-mgla);backdrop-filter:blur(10px);
-  border:1px solid var(--linia);border-radius:3px;
-  padding:9px 13px 10px;text-align:left;cursor:pointer;
-  font:inherit;color:var(--snieg);max-width:62vw;
+  scroll-snap-align:start;flex:0 0 auto;background:var(--las-mgla);backdrop-filter:blur(10px);
+  border:1px solid var(--linia);border-radius:3px;padding:9px 13px 10px;
+  text-align:left;cursor:pointer;font:inherit;color:var(--snieg);max-width:62vw;
 }
 .kafel b{display:block;font-family:Bitter,Georgia,serif;font-weight:700;font-size:14px;white-space:nowrap}
 .kafel em{display:block;font-style:normal;font-size:11.5px;color:var(--kamien);margin-top:2px}
@@ -97,51 +103,32 @@ body{
 
 /* ---------- panel atrakcji ---------- */
 .panel{
-  position:absolute;left:0;right:0;bottom:0;z-index:7;
-  background:var(--las);border-top:1px solid var(--linia);
-  border-radius:10px 10px 0 0;
+  position:absolute;left:0;right:0;bottom:0;z-index:7;background:var(--las);
+  border-top:1px solid var(--linia);border-radius:10px 10px 0 0;
   padding:16px 18px calc(env(safe-area-inset-bottom) + 18px);
   transform:translateY(110%);transition:transform .28s cubic-bezier(.22,.7,.3,1);
-  max-height:72vh;overflow-y:auto;
-  box-shadow:0 -14px 44px rgba(0,0,0,.5);
+  max-height:72vh;overflow-y:auto;box-shadow:0 -14px 44px rgba(0,0,0,.5);
 }
 .panel[data-otwarty="1"]{transform:translateY(0)}
 .uchwyt{width:34px;height:3px;border-radius:2px;background:var(--kamien);opacity:.5;margin:0 auto 14px}
-
-.plakietka{
-  display:inline-block;font-size:10.5px;letter-spacing:.06em;
-  color:var(--zrodlo);border:1px solid var(--zrodlo);
-  border-radius:2px;padding:2px 6px;margin-bottom:9px;
-}
+.plakietka{display:inline-block;font-size:10.5px;letter-spacing:.06em;color:var(--zrodlo);border:1px solid var(--zrodlo);border-radius:2px;padding:2px 6px;margin-bottom:9px}
 .panel h2{font-family:Bitter,Georgia,serif;font-weight:700;font-size:22px;line-height:1.2;letter-spacing:-.015em}
 .meta{font-size:12.5px;color:var(--kamien);margin-top:5px}
 .panel p{font-size:14.5px;line-height:1.6;margin-top:13px;max-width:60ch;color:rgba(238,242,238,.88)}
-
-.dystans{
-  display:flex;align-items:baseline;gap:9px;
-  margin-top:15px;padding-top:14px;border-top:1px solid var(--linia);
-}
+.dystans{display:flex;align-items:baseline;gap:9px;margin-top:15px;padding-top:14px;border-top:1px solid var(--linia)}
 .dystans strong{font-family:Bitter,Georgia,serif;font-size:26px;font-weight:700}
 .dystans span{font-size:12.5px;color:var(--kamien)}
-
 .akcje{display:flex;gap:9px;margin-top:15px;flex-wrap:wrap}
-.akcje a,.akcje button{
-  font:inherit;font-size:14px;text-decoration:none;cursor:pointer;
-  padding:11px 17px;border-radius:3px;border:1px solid var(--linia);
-  background:none;color:var(--snieg);
-}
+.akcje a,.akcje button{font:inherit;font-size:14px;text-decoration:none;cursor:pointer;padding:11px 17px;border-radius:3px;border:1px solid var(--linia);background:none;color:var(--snieg)}
 .akcje .glowna{background:var(--szklo);border-color:var(--szklo)}
 .akcje .partnerska{background:var(--zrodlo);border-color:var(--zrodlo)}
 .akcje a:focus-visible,.akcje button:focus-visible{outline:2px solid var(--snieg);outline-offset:2px}
 
 /* ---------- lokalizacja ---------- */
 .gps{
-  position:absolute;right:14px;z-index:6;
-  bottom:calc(env(safe-area-inset-bottom) + 78px);
-  width:46px;height:46px;border-radius:50%;
-  background:var(--las-mgla);backdrop-filter:blur(10px);
-  border:1px solid var(--linia);color:var(--snieg);
-  display:grid;place-items:center;cursor:pointer;
+  position:absolute;right:14px;z-index:6;bottom:calc(env(safe-area-inset-bottom) + 78px);
+  width:46px;height:46px;border-radius:50%;background:var(--las-mgla);backdrop-filter:blur(10px);
+  border:1px solid var(--linia);color:var(--snieg);display:grid;place-items:center;cursor:pointer;
 }
 .gps[data-akt="1"]{background:var(--szklo);border-color:var(--szklo)}
 .gps svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8}
@@ -149,25 +136,26 @@ body{
 
 /* ---------- komunikaty ---------- */
 .info{
-  position:absolute;left:14px;right:14px;top:50%;z-index:9;
-  transform:translateY(-50%);
+  position:absolute;left:14px;right:14px;top:50%;z-index:9;transform:translateY(-50%);
   background:var(--las);border:1px solid var(--zrodlo);border-radius:4px;
   padding:16px 18px;font-size:14px;line-height:1.55;display:none;
 }
 .info[data-widok="1"]{display:block}
-.info button{
-  font:inherit;font-size:13px;margin-top:12px;cursor:pointer;
-  background:none;border:1px solid var(--linia);color:var(--snieg);
-  padding:7px 13px;border-radius:3px;
-}
+.info button{font:inherit;font-size:13px;margin-top:12px;cursor:pointer;background:none;border:1px solid var(--linia);color:var(--snieg);padding:7px 13px;border-radius:3px}
 
 .maplibregl-ctrl-attrib{font-size:10px}
-@media (prefers-reduced-motion:reduce){.panel{transition:none}}
+@media (prefers-reduced-motion:reduce){.panel,.start{transition:none}}
 </style>
 </head>
 <body>
 
 <div id="mapa"></div>
+
+<div class="start" id="start">
+  <h1>Tylicz</h1>
+  <div class="pasek"><i></i></div>
+  <p id="start-opis">Wczytywanie mapy</p>
+</div>
 
 <div class="gora">
   <div class="znak">Tylicz <span>574 m n.p.m.</span></div>
@@ -193,14 +181,13 @@ body{
   <button type="button" onclick="document.getElementById('info').dataset.widok='0'">Zamknij</button>
 </div>
 
-<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="vendor/maplibre-gl.js"></script>
 <script>
 /* ===================================================================
-   DANE — tu edytujesz treść. Nic poza tą tablicą nie musi się zmieniać.
+   DANE — tu edytujesz treść.
 
-   UWAGA: współrzędne poza centrum Tylicza to SZACUNKI. Trzeba je
-   poprawić. Otwórz stronę z ?edit=1 na końcu adresu — wtedy kliknięcie
-   w mapę kopiuje "lat, lng" do schowka i wypisuje w konsoli.
+   UWAGA: współrzędne poza rynkiem to SZACUNKI, do poprawienia.
+   Wejdź na adres z ?edit=1 — kliknięcie w mapę kopiuje "lat, lng".
 
    sezon: 'lato' | 'zima' | 'caly'
    =================================================================== */
@@ -259,61 +246,66 @@ const POI = [
 /* =================================================================== */
 
 const nietDrgania = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-let sezon = 'lato', wybrany = null, pinezki = {}, mojaPozycja = null, znacznikJa = null, obserwator = null;
+let sezon = 'lato', wybrany = null, pinezki = {}, mojaPozycja = null,
+    znacznikJa = null, obserwator = null, dojechalo = false;
 
 const $ = s => document.querySelector(s);
 const panel = $('#panel');
 
+/* Start od razu na docelowym kadrze, tylko bez pochylenia.
+   Przelot z wysokiego zoomu ciągnął kafelki z pięciu poziomów naraz. */
 const map = new maplibregl.Map({
   container:'mapa',
   style:'https://tiles.openfreemap.org/styles/liberty',
-  center:CENTRUM,
-  zoom: nietDrgania ? 15.2 : 11.4,
-  pitch: nietDrgania ? 60 : 0,
-  bearing: nietDrgania ? -22 : 0,
-  maxZoom:18.5,
+  center:CENTRUM, zoom:15.2, pitch:0, bearing:-22,
+  maxZoom:18.5, fadeDuration:0,
   attributionControl:{compact:true}
 });
 map.addControl(new maplibregl.NavigationControl({visualizePitch:true}), 'bottom-left');
 map.touchZoomRotate.enableRotation();
 
 map.on('load', () => {
-  // rzeźba terenu — bez tego cała reszta nie ma sensu w Beskidzie
-  try{
-    map.addSource('nmt', {
-      type:'raster-dem',
-      tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-      encoding:'terrarium', tileSize:256, maxzoom:15,
-      attribution:'Rzeźba terenu: AWS Terrain Tiles'
-    });
-    map.setTerrain({source:'nmt', exaggeration:1.35});
-  }catch(e){ console.warn('Brak rzeźby terenu:', e); }
-
   if(map.setSky){
     map.setSky({
       'sky-color':'#8FB8C9','horizon-color':'#D6DCD4','fog-color':'#C9D2CB',
       'sky-horizon-blend':.7,'horizon-fog-blend':.5,'fog-ground-blend':.05
     });
   }
-
   dodajBudynki();
   rysujPinezki();
   budujTasme();
-
-  if(!nietDrgania){
-    setTimeout(() => map.easeTo({
-      center:CENTRUM, zoom:15.2, pitch:60, bearing:-22, duration:5200
-    }), 500);
-  }
 });
 
-/* Bryły budynków — nazwa źródła wektorowego zależy od stylu,
-   więc szukamy jej zamiast wpisywać na sztywno. */
+/* Rzeźba dopiero po wyrysowaniu płaskiej mapy — inaczej DEM i wektory
+   biją się o to samo łącze i przez kilka sekund nie widać niczego. */
+map.once('idle', wlaczTeren);
+setTimeout(() => { if(!dojechalo) wlaczTeren(); }, 5000);   // gdyby sieć przycięła
+
+function wlaczTeren(){
+  if(dojechalo) return;
+  dojechalo = true;
+
+  $('#start').dataset.koniec = '1';
+
+  try{
+    map.addSource('nmt', {
+      type:'raster-dem',
+      tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+      encoding:'terrarium', tileSize:256,
+      maxzoom:12,              // z12 wystarcza na dolinę; z15 to był kilkukrotny narzut
+      attribution:'Rzeźba terenu: AWS Terrain Tiles'
+    });
+    map.setTerrain({source:'nmt', exaggeration:1.35});
+  }catch(e){ console.warn('Brak rzeźby terenu:', e); }
+
+  if(!nietDrgania) map.easeTo({pitch:60, zoom:15.35, duration:2400});
+  else map.jumpTo({pitch:60});
+}
+
 function dodajBudynki(){
   const zrodla = map.getStyle().sources;
   const wektor = Object.keys(zrodla).find(k => zrodla[k].type === 'vector');
   if(!wektor) return;
-
   const etykieta = map.getStyle().layers.find(l => l.type === 'symbol');
 
   try{
@@ -341,7 +333,6 @@ function rysujPinezki(){
     el.setAttribute('role','button');
     el.setAttribute('aria-label', p.nazwa);
     el.addEventListener('click', ev => { ev.stopPropagation(); pokaz(p.id); });
-
     pinezki[p.id] = new maplibregl.Marker({element:el, anchor:'bottom'})
       .setLngLat([p.lng, p.lat]).addTo(map);
   });
@@ -368,35 +359,28 @@ const widoczne = () => POI
 
 function filtruj(){
   const ok = new Set(widoczne().map(p => p.id));
-  POI.forEach(p => {
-    pinezki[p.id].getElement().style.display = ok.has(p.id) ? '' : 'none';
-  });
+  POI.forEach(p => { pinezki[p.id].getElement().style.display = ok.has(p.id) ? '' : 'none'; });
 }
 
 function pokaz(id){
   const p = POI.find(x => x.id === id);
   if(!p) return;
   wybrany = id;
-
   Object.entries(pinezki).forEach(([k,m]) =>
     m.getElement().classList.toggle('wybrany', k === id && !POI.find(x=>x.id===k).partner));
 
-  map.easeTo({
-    center:[p.lng, p.lat], zoom:16.6, pitch:62,
-    offset:[0, -110], duration: nietDrgania ? 0 : 1100
-  });
-
+  map.easeTo({center:[p.lng, p.lat], zoom:16.6, pitch:62, offset:[0,-110],
+              duration: nietDrgania ? 0 : 1100});
   rysujPanel(p);
   panel.dataset.otwarty = '1';
 }
 
 function rysujPanel(p){
   const nav = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=walking`;
-  let d = '';
-
+  let d;
   if(mojaPozycja){
     const m = odleglosc(mojaPozycja, [p.lng, p.lat]);
-    const minuty = Math.max(1, Math.round(m / 78));   // ~4,7 km/h pieszo
+    const minuty = Math.max(1, Math.round(m / 78));
     d = `<div class="dystans">
            <strong>${m < 1000 ? Math.round(m/10)*10 + ' m' : (m/1000).toFixed(1) + ' km'}</strong>
            <span>stąd, około ${minuty} min pieszo</span>
@@ -418,22 +402,17 @@ function rysujPanel(p){
     </div>`;
 }
 
-/* pora roku */
 document.querySelectorAll('.sezon button').forEach(b => {
   b.addEventListener('click', () => {
     sezon = b.dataset.sezon;
-    document.querySelectorAll('.sezon button').forEach(x =>
-      x.setAttribute('aria-pressed', String(x === b)));
-    filtruj();
-    budujTasme();
+    document.querySelectorAll('.sezon button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    filtruj(); budujTasme();
     panel.dataset.otwarty = '0';
   });
 });
 
-/* lokalizacja */
 $('#gps').addEventListener('click', () => {
   const btn = $('#gps');
-
   if(obserwator !== null){
     navigator.geolocation.clearWatch(obserwator);
     obserwator = null; mojaPozycja = null;
@@ -441,13 +420,11 @@ $('#gps').addEventListener('click', () => {
     btn.dataset.akt = '0';
     return;
   }
-
   if(!navigator.geolocation){ komunikat('Ta przeglądarka nie udostępnia lokalizacji.'); return; }
 
   obserwator = navigator.geolocation.watchPosition(poz => {
     mojaPozycja = [poz.coords.longitude, poz.coords.latitude];
     btn.dataset.akt = '1';
-
     if(!znacznikJa){
       const el = document.createElement('div');
       el.className = 'ja';
@@ -456,12 +433,10 @@ $('#gps').addEventListener('click', () => {
     }else{
       znacznikJa.setLngLat(mojaPozycja);
     }
-
     if(wybrany && panel.dataset.otwarty === '1') rysujPanel(POI.find(x => x.id === wybrany));
   }, err => {
-    komunikat('Nie udało się ustalić pozycji. Lokalizacja działa tylko przez HTTPS — otwarcie pliku bezpośrednio z dysku (file://) jej nie uruchomi.<br><br>Kod błędu: ' + err.code);
-    btn.dataset.akt = '0';
-    obserwator = null;
+    komunikat('Nie udało się ustalić pozycji. Kod błędu: ' + err.code);
+    btn.dataset.akt = '0'; obserwator = null;
   }, {enableHighAccuracy:true, maximumAge:8000, timeout:12000});
 });
 
@@ -470,7 +445,6 @@ function komunikat(html){
   $('#info').dataset.widok = '1';
 }
 
-/* haversine, metry */
 function odleglosc(a, b){
   const R = 6371000, rad = x => x * Math.PI / 180;
   const dLat = rad(b[1] - a[1]), dLng = rad(b[0] - a[0]);
@@ -480,14 +454,19 @@ function odleglosc(a, b){
 
 map.on('click', () => { panel.dataset.otwarty = '0'; });
 
-/* tryb poprawiania współrzędnych: dopisz ?edit=1 do adresu */
+map.on('error', e => {
+  console.error(e && e.error);
+  if(!dojechalo){
+    $('#start-opis').textContent = 'Mapa nie chce się wczytać. Sprawdź konsolę przeglądarki.';
+  }
+});
+
 if(new URLSearchParams(location.search).get('edit') === '1'){
   map.on('click', e => {
-    const s = `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`;
+    const s = `lat:${e.lngLat.lat.toFixed(5)}, lng:${e.lngLat.lng.toFixed(5)}`;
     console.log(s);
     if(navigator.clipboard) navigator.clipboard.writeText(s);
-    komunikat('Skopiowano do schowka:<br><br><code>lat:' +
-      e.lngLat.lat.toFixed(5) + ', lng:' + e.lngLat.lng.toFixed(5) + '</code>');
+    komunikat('Skopiowano:<br><br><code>' + s + '</code>');
   });
 }
 </script>
