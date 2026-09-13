@@ -162,6 +162,31 @@ body{
 .info[data-widok="1"]{display:block}
 .info button{font:inherit;font-size:13px;margin-top:12px;cursor:pointer;background:none;border:1px solid var(--linia);color:var(--snieg);padding:7px 13px;border-radius:3px}
 
+/* ---------- tryb kalibracji (?kalibracja=1) ---------- */
+body.kalibracja .pin{pointer-events:none}
+body.kalibracja .tasma,body.kalibracja .tematy,body.kalibracja .oto{display:none}
+.kal,.kal-wynik{
+  position:absolute;left:14px;right:14px;z-index:12;
+  bottom:calc(env(safe-area-inset-bottom) + 14px);
+  background:var(--las);border:1px solid var(--zrodlo);border-radius:5px;padding:14px 16px;
+}
+.kal[hidden],.kal-wynik[hidden]{display:none}
+.kal-glowa{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.kal-glowa span{font-size:11.5px;color:var(--kamien)}
+.kal b{font-family:Bitter,Georgia,serif;font-weight:700;font-size:18px;display:block}
+.kal p{font-size:13px;color:var(--kamien);margin-top:5px;line-height:1.45}
+.kal-akcje{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
+.kal button,.kal-wynik button{
+  font:inherit;font-size:13px;cursor:pointer;padding:8px 13px;border-radius:3px;
+  border:1px solid var(--linia);background:none;color:var(--snieg);
+}
+.kal-wynik textarea{
+  width:100%;height:34vh;margin-top:10px;resize:vertical;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.45;
+  background:#082018;color:var(--snieg);border:1px solid var(--linia);border-radius:3px;padding:9px;
+}
+.kal-wynik b{font-family:Bitter,Georgia,serif;font-weight:700;font-size:15px}
+
 .maplibregl-ctrl-attrib{font-size:10px}
 @media (prefers-reduced-motion:reduce){.panel,.start{transition:none}}
 </style>
@@ -200,6 +225,29 @@ body{
   <button type="button" onclick="document.getElementById('info').dataset.widok='0'">Zamknij</button>
 </div>
 
+<div class="kal" id="kal" hidden>
+  <div class="kal-glowa">
+    <span id="kal-licznik"></span>
+    <button type="button" id="kal-koniec">Zakończ i pokaż kod</button>
+  </div>
+  <b id="kal-nazwa"></b>
+  <p>Kliknij w mapę dokładnie tam, gdzie to miejsce naprawdę jest.</p>
+  <div class="kal-akcje">
+    <button type="button" id="kal-pokaz">Pokaż obecną pinezkę</button>
+    <button type="button" id="kal-cofnij">Cofnij</button>
+    <button type="button" id="kal-pomin">Pomiń</button>
+  </div>
+</div>
+
+<div class="kal-wynik" id="kal-wynik" hidden>
+  <b>Gotowe — podmień tablicę POI w index.html</b>
+  <textarea id="kal-tekst" readonly spellcheck="false"></textarea>
+  <div class="kal-akcje">
+    <button type="button" id="kal-kopiuj">Kopiuj do schowka</button>
+    <button type="button" id="kal-wroc">Wróć do poprawiania</button>
+  </div>
+</div>
+
 <script src="vendor/maplibre-gl.js"></script>
 <script>
 /* ===================================================================
@@ -235,7 +283,7 @@ const POI = [
   {
     id:'tyliczski', nazwa:'TYLICZ.ski', kat:'narty', tematy:['zima'],
     lat:49.3985, lng:21.0196, partner:true, www:'https://tylicz.ski',
-    opis:'Największa stacja w Tyliczu — ponad 6 km tras o długości od 150 do 1200 m, wszystkie naśnieżane, ratrakowane i oświetlone po zmierzchu. Osobne poletko z taśmą SunKid i przedszkole narciarskie dla najmłodszych. Trasy 1 i 7 dla zaawansowanych, 2, 5 i 6 dla średnich.'
+    opis:'Największa stacja w Tyliczu, przy ulicy Wolności — sześć kilometrów tras i dwie koleje krzesełkowe. Trasy naśnieżane, ratrakowane i oświetlone po zmierzchu, o długości od 150 do 1200 m. Osobne poletko dla początkujących i przedszkole narciarskie.'
   },
   {
     id:'kosciol', nazwa:'Kościół św. Piotra i Pawła', kat:'zabytek', tematy:['zabytki','konfederaci'],
@@ -306,7 +354,7 @@ const POI = [
   {
     id:'masterski', nazwa:'Centrum Master-Ski', kat:'narty', tematy:['zima'],
     lat:49.3948, lng:21.0288,
-    opis:'Trzy wyciągi i dziesięć tras na północnym stoku, 680 m n.p.m., w samym centrum wsi. Łagodne i szerokie zjazdy, stok oświetlony i naśnieżany. Stacja nastawiona na rodziny i naukę jazdy.'
+    opis:'Rodzinny ośrodek na północnych stokach w samym centrum Tylicza, przy ulicy Pułaskiego, na wysokości 680 m n.p.m. Czteroosobowa kolej krzesełkowa i trzy wyciągi, najdłuższa trasa 1350 m, najkrótsza 150 m. Funpark z przejazdem przez tunel, przedszkole narciarskie, wypożyczalnia i karczma.'
   },
   {
     id:'farmalama', nazwa:'Farma Lama', kat:'rodzina', tematy:['rodzina'],
@@ -334,6 +382,7 @@ const O_TYLICZU = {
 /* =================================================================== */
 
 const nietDrgania = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const KAL = new URLSearchParams(location.search).get('kalibracja') === '1';
 let temat = 'wszystko', wybrany = null, pinezki = {}, mojaPozycja = null,
     znacznikJa = null, obserwator = null, dojechalo = false;
 
@@ -375,6 +424,10 @@ function wlaczTeren(){
   if(dojechalo) return;
   dojechalo = true;
   $('#start').dataset.koniec = '1';
+
+  /* W kalibracji mapa zostaje płaska: na pochylonym terenie trudno
+     trafić w konkretny budynek. */
+  if(KAL){ startKalibracji(); return; }
 
   try{
     map.addSource('nmt', {
@@ -643,7 +696,83 @@ function odleglosc(a, b){
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-map.on('click', () => { panel.dataset.otwarty = '0'; });
+map.on('click', () => { if(!KAL) panel.dataset.otwarty = '0'; });
+
+/* ===================================================================
+   KALIBRACJA — ?kalibracja=1
+
+   Przechodzi po kolei przez wszystkie punkty. Klikasz właściwe miejsce,
+   pinezka od razu tam skacze, a na końcu dostajesz gotową tablicę POI
+   z poprawionymi współrzędnymi i całą treścią bez zmian.
+   =================================================================== */
+
+let kalIdx = 0;
+const kalWynik = POI.map(p => JSON.parse(JSON.stringify(p)));
+const kalRuszone = new Set();
+
+function startKalibracji(){
+  document.body.classList.add('kalibracja');
+  map.setMaxZoom(19);
+  map.jumpTo({pitch:0, bearing:0, zoom:16});
+  $('#kal').hidden = false;
+  kalPokazKrok();
+}
+
+function kalPokazKrok(){
+  if(kalIdx >= kalWynik.length){ kalKoniec(); return; }
+  const p = kalWynik[kalIdx];
+  $('#kal-licznik').textContent =
+    'Punkt ' + (kalIdx + 1) + ' z ' + kalWynik.length +
+    ' · poprawionych: ' + kalRuszone.size;
+  $('#kal-nazwa').textContent = p.nazwa;
+
+  Object.entries(pinezki).forEach(([id, m]) =>
+    m.getElement().classList.toggle('wybrany', id === p.id));
+}
+
+function kalUstaw(lngLat){
+  const p = kalWynik[kalIdx];
+  p.lat = +lngLat.lat.toFixed(5);
+  p.lng = +lngLat.lng.toFixed(5);
+  kalRuszone.add(p.id);
+  pinezki[p.id].setLngLat([p.lng, p.lat]);
+  kalIdx++;
+  kalPokazKrok();
+}
+
+function kalKoniec(){
+  $('#kal').hidden = true;
+  $('#kal-wynik').hidden = false;
+  $('#kal-tekst').value = 'const POI = ' + JSON.stringify(kalWynik, null, 2) + ';';
+}
+
+if(KAL){
+  map.on('click', e => kalUstaw(e.lngLat));
+
+  $('#kal-pokaz').addEventListener('click', () => {
+    const p = kalWynik[kalIdx];
+    if(p) map.easeTo({center:[p.lng, p.lat], zoom:17, duration:700});
+  });
+  $('#kal-pomin').addEventListener('click', () => { kalIdx++; kalPokazKrok(); });
+  $('#kal-cofnij').addEventListener('click', () => {
+    if(kalIdx > 0) kalIdx--;
+    kalPokazKrok();
+  });
+  $('#kal-koniec').addEventListener('click', kalKoniec);
+  $('#kal-wroc').addEventListener('click', () => {
+    $('#kal-wynik').hidden = true;
+    $('#kal').hidden = false;
+    if(kalIdx >= kalWynik.length) kalIdx = kalWynik.length - 1;
+    kalPokazKrok();
+  });
+  $('#kal-kopiuj').addEventListener('click', () => {
+    const t = $('#kal-tekst');
+    t.select();
+    if(navigator.clipboard) navigator.clipboard.writeText(t.value);
+    $('#kal-kopiuj').textContent = 'Skopiowane';
+    setTimeout(() => { $('#kal-kopiuj').textContent = 'Kopiuj do schowka'; }, 1800);
+  });
+}
 
 map.on('error', e => {
   console.error(e && e.error);
