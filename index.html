@@ -279,91 +279,97 @@ const TEMATY = [
   {id:'rodzina',     nazwa:'Z dziećmi'}
 ];
 
+/* Pole `osm` to fragmenty nazwy, po których pinezka sama znajdzie
+   swój obiekt w kafelkach OpenStreetMap i tam przeskoczy. Porównanie
+   ignoruje wielkość liter, ogonki, kropki i myślniki, więc „TYLICZ.ski”
+   trafi w „Tylicz-Ski”. Ustaw `recznie:true`, żeby zablokować
+   przyklejanie i zostawić własne współrzędne. */
+
 const POI = [
   {
     id:'tyliczski', nazwa:'TYLICZ.ski', kat:'narty', tematy:['zima'],
-    lat:49.3985, lng:21.0196, partner:true, www:'https://tylicz.ski',
+    lat:49.3985, lng:21.0196, partner:true, www:'https://tylicz.ski', osm:['tyliczski'],
     opis:'Największa stacja w Tyliczu, przy ulicy Wolności — sześć kilometrów tras i dwie koleje krzesełkowe. Trasy naśnieżane, ratrakowane i oświetlone po zmierzchu, o długości od 150 do 1200 m. Osobne poletko dla początkujących i przedszkole narciarskie.'
   },
   {
     id:'kosciol', nazwa:'Kościół św. Piotra i Pawła', kat:'zabytek', tematy:['zabytki','konfederaci'],
-    lat:49.3951, lng:21.0262,
+    lat:49.3951, lng:21.0262, osm:['piotraipawla','swpiotra'],
     opis:'Drewniany, wzniesiony w 1612 r. z fundacji biskupa krakowskiego Piotra Tylickiego, konsekrowany dopiero pół wieku później. Konstrukcja zrębowa, jedna nawa, barokowa wieżyczka sygnaturkowa nad dachem. W prezbiterium trzy rokokowe ołtarze z drugiej połowy XVIII w., w głównym obraz Matki Boskiej Tylickiej z przełomu XVI i XVII w. Przed kościołem dzwonnica z dzwonem z 1665 r.',
     wiedz:'Wisi tu obraz świętej Barbary, patronki artylerzystów — według przekazów prywatny obraz Kazimierza Pułaskiego, który woził go ze sobą i wieszał w namiocie. Zostawił go tylickiemu kościołowi jako wotum. Chrzcielnica pochodzi ze szkoły Wita Stwosza, a krucyfiks rzeźbiony w jednym pniu jest jeszcze czternastowieczny.'
   },
   {
     id:'cerkiew', nazwa:'Cerkiew św. Kosmy i Damiana', kat:'zabytek', tematy:['zabytki'],
-    lat:49.3963, lng:21.0241,
+    lat:49.3963, lng:21.0241, osm:['kosmy','damiana'],
     opis:'Drewniana cerkiew greckokatolicka z lat 1738–1744, w typie zachodniołemkowskim: trójdzielna bryła, trzy wieże, wieża główna o konstrukcji słupowej. W środku osiemnastowieczny ikonostas i późnobarokowy ołtarz z ikoną Matki Bożej w drewnianej sukience. Dziś służy jako kościół cmentarny.',
     wiedz:'Polichromia z 1938 r. powstała na 950-lecie Chrztu Rusi — święte Olga i Włodzimierz wzorowane są na ikonach z kijowskiego Soboru św. Włodzimierza. W nawie wisi obraz Chrystusa w Ogrójcu z widocznym śladem po kuli, wystrzelonej przez słowackich żołnierzy w pierwszych dniach września 1939 r.'
   },
   {
     id:'rynek', nazwa:'Rynek', kat:'zabytek', tematy:['zabytki','konfederaci'],
-    lat:49.3956, lng:21.0254,
+    lat:49.3956, lng:21.0254, osm:['rynek'],
     opis:'Czworoboczny plac z promieniście odchodzącymi uliczkami — zachowany średniowieczny układ miasteczka. Nawierzchnia od wieków z kocich łbów, od strony kościoła murowana kapliczka z 1808 r. Odbywały się tu cotygodniowe targi i cztery jarmarki rocznie.',
     wiedz:'Górę po południowej stronie do dziś nazywa się Szubienicą, a jej zbocza Łaskami. Tylicz miał własne sądownictwo i wyroki wykonywał u siebie.'
   },
   {
     id:'muzeum', nazwa:'Muzeum Dziejów Tylicza', kat:'konfederaci', tematy:['konfederaci','zabytki'],
-    lat:49.3958, lng:21.0251,
+    lat:49.3958, lng:21.0251, osm:['muzeum','ratusz'],
     opis:'Mieści się w budynku dawnego ratusza przy rynku. Kilka sal z pamiątkami po konfederacji barskiej, galeria rzeźb i obrazów tylickich artystów, stroje regionalne — polskie i łemkowskie.',
     wiedz:'W dawnym ratuszu obradował sąd kryminalny Miastka. Dziś w tym samym miejscu działa wiejski dom kultury.'
   },
   {
     id:'huzary', nazwa:'Huzary (863 m)', kat:'widok', tematy:['konfederaci'],
-    lat:49.4070, lng:21.0030,
+    lat:49.4070, lng:21.0030, osm:['huzary','czertez'],
     opis:'Szczyt nad Tyliczem, po łemkowsku Czerteż, czyli wykarczowany obszar. Wyjście z końca ulicy Biskupa Tylickiego, przez Szwarcową: dwie godziny w górę, godzina czterdzieści z powrotem. Z pierwszego wzniesienia panorama Tylicza, Muszynki, Przełęczy Tylickiej i słowackich gór na horyzoncie.',
     wiedz:'Nazwa wzięła się od węgierskich huzarów z prywatnej gwardii Pułaskiego, którzy odznaczyli się tu w bitwie z Rosjanami w 1770 r. Jeszcze przed wojną wyorano na zboczu szablę z datą 1747, znajdowano też osiemnastowieczny granat armatni.'
   },
   {
     id:'kopiec', nazwa:'Kopiec Pułaskiego', kat:'konfederaci', tematy:['konfederaci'],
-    lat:49.4045, lng:20.9975,
+    lat:49.4045, lng:20.9975, osm:['kopiec','pulaskiego'],
     opis:'Siedmiometrowy kopiec na zboczu Huzarów, przy drodze z Krynicy do Tylicza. Na szczycie pomnik w kształcie graniastosłupa z orłem zrywającym się do lotu.',
     wiedz:'Usypany staraniem doktora Franciszka Kmietowicza, burmistrza Krynicy, i odsłonięty 25 sierpnia 1929 r. W czasach PRL temat konfederacji spychano na margines, bo była to wojna z Rosją.'
   },
   {
     id:'okopy', nazwa:'Okopy Konfederatów Barskich', kat:'konfederaci', tematy:['konfederaci'],
-    lat:49.3690, lng:21.0580,
+    lat:49.3690, lng:21.0580, osm:['okopy','szaniec'],
     opis:'Warowny obóz na grzbiecie góry Jawor nad Muszynką, usypany wiosną 1769 r. nad starym szlakiem handlowym przez Przełęcz Tylicką, żeby kontrolować przejście. Ponad 8400 m² — największe założenie konfederackie na Sądecczyźnie, przez pewien czas centralny ośrodek administracyjny konfederacji. Od 1963 r. rezerwat przyrodniczo-historyczny.',
     wiedz:'Pułaski przybył tu 26 września 1769 r. i wrócił w lipcu 1770. Gdy Rosjanie uderzyli, Austriacy wbrew umowie przepuścili ich przez granicę. Nieprzygotowany do obrony szaniec padł, Polacy stracili 179 ludzi.'
   },
   {
     id:'mofeta', nazwa:'Mofeta tylicka', kat:'przyroda', tematy:['woda','rodzina'],
-    lat:49.3908, lng:21.0331,
+    lat:49.3908, lng:21.0331, osm:['mofeta'],
     opis:'Największa mofeta w Karpatach. Jedenaście kręgów, każdy około metra średnicy i metra głębokości, a w nich blisko pięćdziesiąt bulgotek i dychawek, którymi z ziemi uchodzi dwutlenek węgla. W każdym kręgu woda smakuje inaczej. Udostępniona zwiedzającym w 2011 r., na terenie osady „Domki w Lesie”.',
     wiedz:'W latach sześćdziesiątych hodowano tu glony na pokarm dla radzieckich kosmonautów. Oficjalnie miała to być pasza dla zwierząt.'
   },
   {
     id:'zdroj', nazwa:'Zdrój Główny i Park Zdrojowy', kat:'woda', tematy:['woda','rodzina'],
-    lat:49.3938, lng:21.0285,
+    lat:49.3938, lng:21.0285, osm:['zdrojglowny','pijalnia'],
     opis:'Źródło szczawy zabudowane stylową pijalnią na lewym brzegu Muszynki. Woda wodorowęglanowo-wapniowo-magnezowa, z żelazem i dwutlenkiem węgla. Wokół park z placem zabaw i siłownią plenerową.',
     wiedz:'Pierwsza wzmianka o źródle pochodzi z Księgi Miasta Tylicza z 1753 r. Zatrzymywały się przy nim karawany kupieckie ciągnące z Węgier do Sącza i Krakowa. Tylicz ma ponad osiemnaście udokumentowanych źródeł mineralnych.'
   },
   {
     id:'rakowsko', nazwa:'Ścieżka „Na Rakowsku”', kat:'przyroda', tematy:['woda','rodzina'],
-    lat:49.3985, lng:21.0105,
+    lat:49.3985, lng:21.0105, osm:['rakowsk','zrodlowedrowcow'],
     opis:'Ścieżka przyrodniczo-edukacyjna: cztery kilometry i dziewięć przystanków tematycznych, prowadzona przez gminę wspólnie z Leśnym Zakładem Doświadczalnym. Zaczyna się przy źródełku dwa kilometry od centrum, zwanym Źródłem Wędrowców, i biegnie przez Bradowiec do przełomu Muszynki. Kończy się przy dawnym kamieniołomie.',
     wiedz:'Przez Przełęcz Tylicką zalatują tu owady z cieplejszej, południowej strony Karpat. Trafia się nadobnica alpejska — rzadka, popielatobłękitna kózka z czarnymi plamami.'
   },
   {
     id:'przelecz', nazwa:'Przełęcz Tylicka (683 m)', kat:'widok', tematy:['konfederaci'],
-    lat:49.3760, lng:21.0480,
+    lat:49.3760, lng:21.0480, osm:['przelecztylicka'],
     opis:'Najniższe przejście w tej części Karpat, którym od średniowiecza szedł szlak handlowy na Węgry, do Bardiowa. Przy dawnym przejściu granicznym Muszynka–Kurov stoi altanka. Odcinek biegnący wzdłuż granicy ze Słowacją uchodzi za najładniejszy fragment tutejszych szlaków.',
     wiedz:'To przełęcz dała Tyliczowi rację bytu. Osada Ornawa powstała w XIII w. właśnie przy tym trakcie, a handel z Węgrami utrzymywał miasteczko przez kilkaset lat.'
   },
   {
     id:'masterski', nazwa:'Centrum Master-Ski', kat:'narty', tematy:['zima'],
-    lat:49.3948, lng:21.0288,
+    lat:49.3948, lng:21.0288, osm:['masterski'],
     opis:'Rodzinny ośrodek na północnych stokach w samym centrum Tylicza, przy ulicy Pułaskiego, na wysokości 680 m n.p.m. Czteroosobowa kolej krzesełkowa i trzy wyciągi, najdłuższa trasa 1350 m, najkrótsza 150 m. Funpark z przejazdem przez tunel, przedszkole narciarskie, wypożyczalnia i karczma.'
   },
   {
     id:'farmalama', nazwa:'Farma Lama', kat:'rodzina', tematy:['rodzina'],
-    lat:49.3925, lng:21.0215,
+    lat:49.3925, lng:21.0215, osm:['farmalama'],
     opis:'Stadnina z mini zoo — konie, kozy, krowy, owce i kucyki dla najmłodszych. Jazda konna na odkrytej arenie i w krytej ujeżdżalni, dla zaawansowanych wyjazdy w Beskid. Zimą kuligi i ogniska.'
   },
   {
     id:'imieniamaryi', nazwa:'Kościół Imienia Maryi', kat:'zabytek', tematy:['zabytki'],
-    lat:49.3948, lng:21.0267,
+    lat:49.3948, lng:21.0267, osm:['imieniamaryi'],
     opis:'Nowa świątynia parafialna tuż obok drewnianego kościółka. Murowana z cegły i kamienia, ale bryłą świadomie nawiązuje do drewnianych kościołów i cerkwi regionu. Obok stoi Golgota.'
   }
 ];
@@ -409,6 +415,7 @@ map.on('load', () => {
   }
   const wektor = zrodloWektorowe();
   odchudzStyl();
+  dodajLasy(wektor);
   dodajBudynki(wektor);
   wyroznijSciezki(wektor);
   nazwyUlic();
@@ -461,6 +468,14 @@ function wlaczTeren(){
   else if(JAKOSC === 'pelna'){ czujnikStop = true; }
   else map.on('render', czujnik);
 
+  przyklejDoOSM();
+  map.on('idle', przyklejDoOSM);
+
+  if(new URLSearchParams(location.search).get('osm') === '1'){
+    map.fitBounds(RAMY, {duration:0});
+    map.once('idle', spisOSM);
+  }
+
   if(nietDrgania){ map.jumpTo({pitch:50}); pokazOTyliczu(); return; }
   map.easeTo({pitch:50, zoom:15.35, duration:2400});
   setTimeout(pokazOTyliczu, 2600);
@@ -474,6 +489,28 @@ const pierwszySymbol = () => {
   const l = map.getStyle().layers.find(x => x.type === 'symbol');
   return l ? l.id : undefined;
 };
+
+/* Lasy jako bryły, nie płaskie plamy. Pojedynczych drzew nie ma
+   w kafelkach wektorowych, ale wyciągnięty okap czyta się z góry
+   jak korony i daje mapie głębię za jedną warstwę. */
+function dodajLasy(wektor){
+  if(!wektor) return;
+  try{
+    map.addLayer({
+      id:'lasy', type:'fill-extrusion', source:wektor, 'source-layer':'landcover', minzoom:13,
+      filter:['any',
+        ['==',['get','class'],'wood'],
+        ['match',['coalesce',['get','subclass'],''],['forest','wood'],true,false]],
+      paint:{
+        'fill-extrusion-color':['interpolate',['linear'],['zoom'],
+          13,'#7C9B76', 15,'#6C8E68', 17,'#5F8460'],
+        'fill-extrusion-height':['interpolate',['linear'],['zoom'],13,9,16,16],
+        'fill-extrusion-base':0,
+        'fill-extrusion-opacity':.8
+      }
+    }, pierwszySymbol());
+  }catch(e){ console.warn('Brak warstwy lasów:', e); }
+}
 
 function dodajBudynki(wektor){
   if(!wektor) return;
@@ -720,6 +757,106 @@ function odleglosc(a, b){
 }
 
 /* ===================================================================
+   PRZYKLEJANIE DO OSM
+
+   Zamiast wpisywać współrzędne z palca, szukamy obiektu po nazwie
+   w kafelkach, które i tak są pobrane, i przenosimy tam pinezkę.
+   Działa tylko na wczytanych kafelkach, więc powtarzamy przy każdym
+   zatrzymaniu mapy, dopóki wszystkie punkty nie znajdą swojego miejsca.
+   =================================================================== */
+
+const WARSTWY_NAZW = ['poi','building','landcover','landuse','place',
+                      'mountain_peak','park','water_name','transportation_name'];
+
+const uproscNazwe = t => (t || '').toString().toLowerCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .replace(/ł/g,'l').replace(/[^a-z0-9]/g,'');
+
+function srodek(g){
+  if(!g) return null;
+  if(g.type === 'Point') return g.coordinates;
+  const zbior = [];
+  (function zbierz(a){
+    if(typeof a[0] === 'number'){ zbior.push(a); return; }
+    a.forEach(zbierz);
+  })(g.coordinates);
+  if(!zbior.length) return null;
+  return [zbior.reduce((s,c)=>s+c[0],0)/zbior.length,
+          zbior.reduce((s,c)=>s+c[1],0)/zbior.length];
+}
+
+function nazwaneObiekty(wektor){
+  const lista = [];
+  WARSTWY_NAZW.forEach(sl => {
+    let f = [];
+    try{ f = map.querySourceFeatures(wektor, {sourceLayer: sl}); }catch(e){ return; }
+    f.forEach(x => {
+      const w = x.properties || {};
+      const n = w['name:pl'] || w.name;
+      if(!n) return;
+      const s = srodek(x.geometry);
+      if(s) lista.push({nazwa:n, warstwa:sl, lng:s[0], lat:s[1]});
+    });
+  });
+  return lista;
+}
+
+const przyklejone = new Set();
+
+function przyklejDoOSM(){
+  const wektor = zrodloWektorowe();
+  if(!wektor) return;
+  const doZrobienia = POI.filter(p => p.osm && !p.recznie && !przyklejone.has(p.id));
+  if(!doZrobienia.length) return;
+
+  const obiekty = nazwaneObiekty(wektor);
+  if(!obiekty.length) return;
+
+  doZrobienia.forEach(p => {
+    const frag = p.osm.map(uproscNazwe);
+    const trafienia = obiekty.filter(o => {
+      const n = uproscNazwe(o.nazwa);
+      return frag.some(f => n.includes(f));
+    });
+    if(!trafienia.length) return;
+
+    /* przy kilku trafieniach bierzemy najbliższe dotychczasowej pozycji */
+    trafienia.sort((a,b) =>
+      odleglosc([p.lng,p.lat],[a.lng,a.lat]) - odleglosc([p.lng,p.lat],[b.lng,b.lat]));
+    const t = trafienia[0];
+    const ile = Math.round(odleglosc([p.lng,p.lat],[t.lng,t.lat]));
+
+    p.lng = +t.lng.toFixed(5);
+    p.lat = +t.lat.toFixed(5);
+    przyklejone.add(p.id);
+    if(pinezki[p.id]) pinezki[p.id].setLngLat([p.lng, p.lat]);
+    console.log('przyklejono: ' + p.nazwa + '  ->  "' + t.nazwa + '" (' +
+                t.warstwa + '), przesunięcie ' + ile + ' m');
+  });
+
+  const zostalo = POI.filter(p => p.osm && !p.recznie && !przyklejone.has(p.id));
+  if(!zostalo.length) console.log('wszystkie punkty przyklejone do OSM');
+}
+
+/* ?osm=1 — spis wszystkiego, co OSM zna z nazwy w tym prostokącie */
+function spisOSM(){
+  const wektor = zrodloWektorowe();
+  const lista = nazwaneObiekty(wektor)
+    .sort((a,b) => a.nazwa.localeCompare(b.nazwa,'pl'));
+  const widziane = new Set();
+  const tekst = lista.filter(o => {
+    const k = o.nazwa + '|' + o.warstwa;
+    if(widziane.has(k)) return false;
+    widziane.add(k); return true;
+  }).map(o => o.nazwa + '  [' + o.warstwa + ']  lat:' + o.lat.toFixed(5) +
+              ', lng:' + o.lng.toFixed(5)).join('\n');
+
+  $('#kal-wynik').hidden = false;
+  $('#kal-tekst').value = 'Nazwane obiekty OSM w granicach mapy (' +
+    widziane.size + '):\n\n' + tekst;
+}
+
+/* ===================================================================
    JAKOŚĆ — mierzy płynność i sama schodzi o poziom, gdy jest źle.
 
    0  pełna: siatka terenu, natywna gęstość pikseli
@@ -760,6 +897,7 @@ function naCieniowanie(){
         'hillshade-accent-color':'#818F84'
       }
     }, podKtora);
+    if(map.getLayer('lasy')) map.removeLayer('lasy');
     map.setMaxPitch(46);
     if(map.getPitch() > 46) map.easeTo({pitch:46, duration:400});
   }catch(e){ console.warn('Cieniowanie niedostępne:', e); }
