@@ -399,7 +399,7 @@ const map = new maplibregl.Map({
   container:'mapa',
   style:'https://tiles.openfreemap.org/styles/liberty',
   center:CENTRUM, zoom:15.2, pitch:0, bearing:-22,
-  maxBounds:RAMY, minZoom:13, maxZoom:18.5, maxPitch:52,
+  maxBounds:RAMY, minZoom:13, maxZoom:20, maxPitch:52,
   fadeDuration:0, refreshExpiredTiles:false,
   attributionControl:{compact:true}
 });
@@ -417,6 +417,8 @@ map.on('load', () => {
   odchudzStyl();
   dodajLasy(wektor);
   dodajBudynki(wektor);
+  dodajWyciagi(wektor);
+  przygotujDrzewa();
   wyroznijSciezki(wektor);
   nazwyUlic();
   szczyty(wektor);
@@ -470,6 +472,7 @@ function wlaczTeren(){
 
   przyklejDoOSM();
   map.on('idle', przyklejDoOSM);
+  map.on('idle', rozsypDrzewa);
 
   if(new URLSearchParams(location.search).get('osm') === '1'){
     map.fitBounds(RAMY, {duration:0});
@@ -506,10 +509,165 @@ function dodajLasy(wektor){
           13,'#7C9B76', 15,'#6C8E68', 17,'#5F8460'],
         'fill-extrusion-height':['interpolate',['linear'],['zoom'],13,9,16,16],
         'fill-extrusion-base':0,
-        'fill-extrusion-opacity':.8
+        'fill-extrusion-opacity':['interpolate',['linear'],['zoom'],13,.8,15.2,.8,16,.2]
       }
     }, pierwszySymbol());
   }catch(e){ console.warn('Brak warstwy lasów:', e); }
+}
+
+/* ===================================================================
+   DRZEWA
+
+   Kafelki wektorowe nie niosą pojedynczych drzew — jest tylko obrys
+   lasu. Rozsypujemy więc własne, w regularnej siatce z deterministycznym
+   rozrzutem, wewnątrz wielokątów leśnych. To dekoracja, nie dane:
+   drzewo nie stoi tam, gdzie stoi naprawdę, ale las wygląda jak las.
+   Od zoomu 15 w górę okap wyciągniętych brył gaśnie, a pojawiają się
+   sylwetki, żeby jedno nie wyrastało z drugiego.
+   =================================================================== */
+
+const drzewa = new Map();
+const KROK = 0.0003;                        // około 33 m — gęstość lasu reguluje się tutaj
+const KROK_LNG = KROK * 1.55;               // wyrównanie na szerokości 49°
+
+function szum(t){
+  let h = 2166136261;
+  for(let i = 0; i < t.length; i++){ h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
+function rysujDrzewo(iglak){
+  const c = document.createElement('canvas');
+  c.width = 48; c.height = 64;
+  const g = c.getContext('2d');
+
+  g.fillStyle = '#5B4630';
+  g.fillRect(21, 40, 6, 24);
+
+  if(iglak){
+    g.fillStyle = '#2F5233';
+    [[24,2,15,26],[24,16,18,28],[24,30,20,26]].forEach(([x,y,w,h]) => {
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x - w, y + h); g.lineTo(x + w, y + h);
+      g.closePath(); g.fill();
+    });
+    g.fillStyle = 'rgba(120,170,110,.35)';
+    g.beginPath(); g.moveTo(24,2); g.lineTo(14,28); g.lineTo(24,28); g.closePath(); g.fill();
+  }else{
+    g.fillStyle = '#3E6B38';
+    [[24,24,19],[14,30,12],[34,30,12],[24,36,15]].forEach(([x,y,r]) => {
+      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    });
+    g.fillStyle = 'rgba(140,185,120,.4)';
+    g.beginPath(); g.arc(18, 20, 10, 0, Math.PI * 2); g.fill();
+  }
+  return g.getImageData(0, 0, 48, 64);
+}
+
+function przygotujDrzewa(){
+  try{
+    if(!map.hasImage('drzewo-iglak')) map.addImage('drzewo-iglak', rysujDrzewo(true));
+    if(!map.hasImage('drzewo-lisc'))  map.addImage('drzewo-lisc',  rysujDrzewo(false));
+  }catch(e){ return; }
+
+  map.addSource('drzewa-src', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
+  map.addLayer({
+    id:'drzewa', type:'symbol', source:'drzewa-src', minzoom:15,
+    layout:{
+      'icon-image':['match',['get','rodzaj'],'iglak','drzewo-iglak','drzewo-lisc'],
+      'icon-size':['interpolate',['linear'],['zoom'],15,.18,18,.75,20,1.3],
+      'icon-anchor':'bottom',
+      'icon-allow-overlap':true,
+      'icon-ignore-placement':true,
+      'icon-pitch-alignment':'viewport',
+      'icon-rotation-alignment':'viewport'
+    },
+    paint:{'icon-opacity':['interpolate',['linear'],['zoom'],15,0,15.9,1]}
+  });
+}
+
+function wPoligonie(p, ring){
+  let w = false;
+  for(let i = 0, j = ring.length - 1; i < ring.length; j = i++){
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if(((yi > p[1]) !== (yj > p[1])) &&
+       (p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi)) w = !w;
+  }
+  return w;
+}
+
+function rozsypDrzewa(){
+  if(poziom >= 2 || !map.getSource('drzewa-src')) return;
+  if(map.getZoom() < 14.5 || drzewa.size > 3400) return;
+  const wektor = zrodloWektorowe(); if(!wektor) return;
+
+  let f = [];
+  try{ f = map.querySourceFeatures(wektor, {sourceLayer:'landcover'}); }catch(e){ return; }
+  const przed = drzewa.size;
+
+  f.forEach(x => {
+    const w = x.properties || {};
+    if(!(w.class === 'wood' || w.subclass === 'forest' || w.subclass === 'wood')) return;
+    const g = x.geometry; if(!g) return;
+    const wieloboki = g.type === 'Polygon' ? [g.coordinates]
+                    : g.type === 'MultiPolygon' ? g.coordinates : [];
+
+    wieloboki.forEach(wb => {
+      const ring = wb[0];
+      if(!ring || ring.length < 4 || drzewa.size > 3400) return;
+      let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+      ring.forEach(c => {
+        x0 = Math.min(x0, c[0]); x1 = Math.max(x1, c[0]);
+        y0 = Math.min(y0, c[1]); y1 = Math.max(y1, c[1]);
+      });
+
+      for(let la = Math.ceil(y0 / KROK) * KROK; la < y1; la += KROK){
+        for(let ln = Math.ceil(x0 / KROK_LNG) * KROK_LNG; ln < x1; ln += KROK_LNG){
+          if(drzewa.size > 3400) return;
+          const klucz = ln.toFixed(5) + ',' + la.toFixed(5);
+          if(drzewa.has(klucz)) continue;
+          const h = szum(klucz);
+          const px = ln + (h - .5) * KROK_LNG * 1.1;
+          const py = la + (((h * 7.31) % 1) - .5) * KROK * 1.1;
+          if(!wPoligonie([px, py], ring)) continue;
+          drzewa.set(klucz, {lng:px, lat:py, rodzaj: ((h * 13.7) % 1) > .45 ? 'iglak' : 'lisc'});
+        }
+      }
+    });
+  });
+
+  if(drzewa.size === przed) return;
+  map.getSource('drzewa-src').setData({
+    type:'FeatureCollection',
+    features:[...drzewa.values()].map(d => ({
+      type:'Feature',
+      properties:{rodzaj:d.rodzaj},
+      geometry:{type:'Point', coordinates:[d.lng, d.lat]}
+    }))
+  });
+}
+
+/* Wyciągi i koleje linowe — OSM trzyma je w warstwie transportu
+   jako klasę aerialway. Cienka linia plus poprzeczki, czyli tak,
+   jak rysuje się je na mapach turystycznych. */
+function dodajWyciagi(wektor){
+  if(!wektor) return;
+  const filtr = ['==',['get','class'],'aerialway'];
+  try{
+    map.addLayer({
+      id:'wyciag-lina', type:'line', source:wektor, 'source-layer':'transportation',
+      minzoom:13, filter:filtr,
+      paint:{'line-color':'#26302B','line-width':['interpolate',['linear'],['zoom'],13,.9,18,1.8]}
+    }, pierwszySymbol());
+    map.addLayer({
+      id:'wyciag-slupy', type:'line', source:wektor, 'source-layer':'transportation',
+      minzoom:14, filter:filtr,
+      paint:{
+        'line-color':'#26302B',
+        'line-width':['interpolate',['linear'],['zoom'],14,4,18,8],
+        'line-dasharray':[.22,3.4]
+      }
+    }, pierwszySymbol());
+  }catch(e){ console.warn('Brak warstwy wyciągów:', e); }
 }
 
 function dodajBudynki(wektor){
@@ -898,6 +1056,7 @@ function naCieniowanie(){
       }
     }, podKtora);
     if(map.getLayer('lasy')) map.removeLayer('lasy');
+    if(map.getLayer('drzewa')) map.removeLayer('drzewa');
     map.setMaxPitch(46);
     if(map.getPitch() > 46) map.easeTo({pitch:46, duration:400});
   }catch(e){ console.warn('Cieniowanie niedostępne:', e); }
