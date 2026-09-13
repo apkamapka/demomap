@@ -393,7 +393,7 @@ const map = new maplibregl.Map({
   container:'mapa',
   style:'https://tiles.openfreemap.org/styles/liberty',
   center:CENTRUM, zoom:15.2, pitch:0, bearing:-22,
-  maxBounds:RAMY, minZoom:13, maxZoom:18.5,
+  maxBounds:RAMY, minZoom:13, maxZoom:18.5, maxPitch:52,
   fadeDuration:0, refreshExpiredTiles:false,
   attributionControl:{compact:true}
 });
@@ -408,6 +408,7 @@ map.on('load', () => {
     });
   }
   const wektor = zrodloWektorowe();
+  odchudzStyl();
   dodajBudynki(wektor);
   wyroznijSciezki(wektor);
   nazwyUlic();
@@ -416,6 +417,21 @@ map.on('load', () => {
   budujTematy();
   budujTasme();
 });
+
+/* Liberty ma około stu pięćdziesięciu warstw. Numery domów i lotniska
+   są tu bezużyteczne, a etykiety sklepów wystarczą od bliska —
+   rozmieszczanie napisów z wykrywaniem kolizji to najdroższa rzecz,
+   jaką ta biblioteka robi przy obracaniu mapy. */
+function odchudzStyl(){
+  const doWyciecia = ['housenumber','aeroway','aerodrome_label'];
+  map.getStyle().layers.forEach(l => {
+    const sl = l['source-layer'];
+    try{
+      if(doWyciecia.includes(sl)) map.setLayoutProperty(l.id, 'visibility', 'none');
+      else if(sl === 'poi' && l.type === 'symbol') map.setLayerZoomRange(l.id, 16, 24);
+    }catch(e){}
+  });
+}
 
 map.once('idle', wlaczTeren);
 setTimeout(() => { if(!dojechalo) wlaczTeren(); }, 5000);
@@ -439,8 +455,14 @@ function wlaczTeren(){
     map.setTerrain({source:'nmt', exaggeration:1.35});
   }catch(e){ console.warn('Brak rzeźby terenu:', e); }
 
-  if(nietDrgania){ map.jumpTo({pitch:60}); pokazOTyliczu(); return; }
-  map.easeTo({pitch:60, zoom:15.35, duration:2400});
+  bazowyPR = policzBazowyPR();
+  ustawPR(1);
+  if(JAKOSC === 'plynna'){ poziom = 2; ustawPR(.7); naCieniowanie(); czujnikStop = true; }
+  else if(JAKOSC === 'pelna'){ czujnikStop = true; }
+  else map.on('render', czujnik);
+
+  if(nietDrgania){ map.jumpTo({pitch:50}); pokazOTyliczu(); return; }
+  map.easeTo({pitch:50, zoom:15.35, duration:2400});
   setTimeout(pokazOTyliczu, 2600);
 }
 
@@ -515,6 +537,7 @@ function szczyty(wektor){
   try{
     map.addLayer({
       id:'szczyty', type:'symbol', source:wektor, 'source-layer':'mountain_peak', minzoom:13,
+      filter:['>=',['to-number',['coalesce',['get','ele'],0]],600],
       layout:{
         'text-field':['concat',['get','name'],'\n',['to-string',['get','ele']],' m'],
         'text-font':['Noto Sans Regular'],
@@ -602,7 +625,7 @@ function pokaz(id){
   if(!p) return;
   wybrany = id;
   Object.entries(pinezki).forEach(([k,m]) => m.getElement().classList.toggle('wybrany', k === id));
-  map.easeTo({center:[p.lng, p.lat], zoom:16.6, pitch:62, offset:[0,-110],
+  map.easeTo({center:[p.lng, p.lat], zoom:16.6, pitch:50, offset:[0,-110],
               duration: nietDrgania ? 0 : 1100});
   rysujPanel(p);
   panel.dataset.otwarty = '1';
@@ -673,7 +696,7 @@ $('#gps').addEventListener('click', () => {
       const el = document.createElement('div');
       el.className = 'ja';
       znacznikJa = new maplibregl.Marker({element:el}).setLngLat(mojaPozycja).addTo(map);
-      map.easeTo({center:mojaPozycja, zoom:16.2, pitch:60, duration:1200});
+      map.easeTo({center:mojaPozycja, zoom:16.2, pitch:50, duration:1200});
     }else{
       znacznikJa.setLngLat(mojaPozycja);
     }
@@ -694,6 +717,80 @@ function odleglosc(a, b){
   const dLat = rad(b[1] - a[1]), dLng = rad(b[0] - a[0]);
   const h = Math.sin(dLat/2)**2 + Math.cos(rad(a[1])) * Math.cos(rad(b[1])) * Math.sin(dLng/2)**2;
   return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/* ===================================================================
+   JAKOŚĆ — mierzy płynność i sama schodzi o poziom, gdy jest źle.
+
+   0  pełna: siatka terenu, natywna gęstość pikseli
+   1  mniej pikseli (rysowanie w niższej rozdzielczości)
+   2  cieniowanie zboczy zamiast siatki terenu — znika przebieg
+      do tekstury, czyli główny koszt trybu 3D w MapLibre
+
+   Wymuszenie: ?jakosc=pelna albo ?jakosc=plynna
+   =================================================================== */
+
+const JAKOSC = new URLSearchParams(location.search).get('jakosc');
+let poziom = 0, bazowyPR = 1, probki = [], ostatniaKlatka = 0, czujnikStop = false;
+
+function policzBazowyPR(){
+  const dpr = window.devicePixelRatio || 1;
+  const c = map.getCanvas();
+  const px = Math.max(1, c.clientWidth * c.clientHeight);
+  const budzet = 2400000;                       // mniej więcej 1080p
+  return Math.max(0.75, Math.min(dpr, Math.sqrt(budzet / px)));
+}
+
+function ustawPR(mnoznik){
+  if(typeof map.setPixelRatio !== 'function') return;
+  try{ map.setPixelRatio(Math.max(0.7, bazowyPR * mnoznik)); }catch(e){}
+}
+
+function naCieniowanie(){
+  if(!map.getSource('nmt') || map.getLayer('cien')) return;
+  try{
+    map.setTerrain(null);
+    const podKtora = (map.getStyle().layers.find(l => l.type === 'line') || {}).id;
+    map.addLayer({
+      id:'cien', type:'hillshade', source:'nmt',
+      paint:{
+        'hillshade-exaggeration':.55,
+        'hillshade-shadow-color':'#5E6E62',
+        'hillshade-highlight-color':'#FFFFFF',
+        'hillshade-accent-color':'#818F84'
+      }
+    }, podKtora);
+    map.setMaxPitch(46);
+    if(map.getPitch() > 46) map.easeTo({pitch:46, duration:400});
+  }catch(e){ console.warn('Cieniowanie niedostępne:', e); }
+}
+
+function zejdzPoziom(){
+  poziom++;
+  if(poziom === 1) ustawPR(.75);
+  if(poziom >= 2){ ustawPR(.7); naCieniowanie(); czujnikStop = true; }
+  console.log('Jakość obniżona do poziomu ' + poziom);
+}
+
+function czujnik(){
+  if(czujnikStop || KAL) return;
+  const t = performance.now();
+  if(ostatniaKlatka && map.isMoving()){
+    const dt = t - ostatniaKlatka;
+    if(dt < 400) probki.push(dt);               // pomiń przerwy w ruchu
+  }
+  ostatniaKlatka = t;
+
+  if(probki.length < 45) return;
+  probki.sort((a,b) => a - b);
+  const mediana = probki[Math.floor(probki.length / 2)];
+  probki = [];
+
+  if(mediana > 34){                             // poniżej mniej więcej 30 klatek
+    if(poziom < 2) zejdzPoziom(); else czujnikStop = true;
+  }else if(mediana < 21){
+    czujnikStop = true;                         // jest dobrze, przestań mierzyć
+  }
 }
 
 map.on('click', () => { if(!KAL) panel.dataset.otwarty = '0'; });
