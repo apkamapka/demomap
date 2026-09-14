@@ -89,7 +89,7 @@ body{
 .tematy button:focus-visible{outline:2px solid var(--snieg);outline-offset:2px}
 
 /* ---------- pinezki ---------- */
-.pin{cursor:pointer;display:grid;place-items:center;transform-origin:50% 100%}
+.pin{cursor:pointer;display:grid;place-items:center;transform-origin:50% 100%;position:relative}
 .pin i{
   display:grid;place-items:center;width:23px;height:23px;border-radius:50%;
   border:2px solid var(--snieg);box-shadow:0 2px 9px rgba(0,0,0,.5);
@@ -97,6 +97,17 @@ body{
 .pin svg{display:block}
 .pin.partner i{width:34px;height:34px;border-width:2.5px;box-shadow:0 0 0 5px rgba(156,74,34,.26),0 3px 12px rgba(0,0,0,.55)}
 .pin.wybrany i{outline:2.5px solid var(--snieg);outline-offset:2px}
+.pin.wybrany::after{
+  content:'';position:absolute;left:50%;top:50%;
+  width:23px;height:23px;margin:-11.5px 0 0 -11.5px;border-radius:50%;
+  border:2px solid var(--snieg);animation:tetno 1.9s ease-out infinite;pointer-events:none;
+}
+@keyframes tetno{
+  0%{transform:scale(1);opacity:.55}
+  70%{transform:scale(2.6);opacity:0}
+  100%{transform:scale(2.6);opacity:0}
+}
+@media (prefers-reduced-motion:reduce){.pin.wybrany::after{display:none}}
 
 /* ---------- taśma kafelków ---------- */
 .tasma{
@@ -144,15 +155,41 @@ body{
 .akcje .partnerska{background:var(--zrodlo);border-color:var(--zrodlo)}
 .akcje a:focus-visible,.akcje button:focus-visible{outline:2px solid var(--snieg);outline-offset:2px}
 
-/* ---------- lokalizacja ---------- */
-.gps{
-  position:absolute;right:14px;z-index:6;bottom:calc(env(safe-area-inset-bottom) + 78px);
-  width:46px;height:46px;border-radius:50%;background:var(--las-mgla);
-  border:1px solid var(--linia);color:var(--snieg);display:grid;place-items:center;cursor:pointer;
+/* ---------- sterowanie mapą ----------
+   Domyślne przyciski MapLibre siedziały w lewym dolnym rogu, czyli
+   pod taśmą kafelków. Własny zestaw stoi po prawej, nad taśmą, i ma
+   kompas — bez niego nie dało się wrócić na północ. */
+.sterowanie{
+  position:absolute;right:14px;z-index:6;bottom:calc(env(safe-area-inset-bottom) + 86px);
+  display:flex;flex-direction:column;gap:7px;
 }
-.gps[data-akt="1"]{background:var(--szklo);border-color:var(--szklo)}
-.gps svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8}
+.ster{
+  width:46px;height:46px;border-radius:50%;background:var(--las-mgla);
+  border:1px solid var(--linia);color:var(--snieg);display:grid;place-items:center;
+  cursor:pointer;font:inherit;padding:0;-webkit-tap-highlight-color:transparent;
+}
+.ster:focus-visible{outline:2px solid var(--snieg);outline-offset:2px}
+.ster svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8}
+.ster[data-akt="1"]{background:var(--szklo);border-color:var(--szklo)}
+.ster.zoom{width:46px;height:38px;border-radius:3px;font-size:20px;line-height:1}
+@media (pointer:coarse){.ster.zoom{display:none}}
+
+/* kompas: igła kręci się razem z mapą, litera N stoi w miejscu */
+.kompas{position:relative}
+.kompas .igla{position:absolute;inset:0;display:grid;place-items:center;transition:transform .12s linear}
+@media (prefers-reduced-motion:reduce){.kompas .igla{transition:none}}
+.kompas .igla svg{width:24px;height:24px}
+.kompas b{
+  position:absolute;top:4px;left:50%;transform:translateX(-50%);
+  font-family:Bitter,Georgia,serif;font-size:8.5px;letter-spacing:.04em;color:var(--kamien);
+}
+.kompas[data-polnoc="1"] b{color:var(--snieg)}
+
 .ja{width:16px;height:16px;border-radius:50%;background:#4FA3FF;border:2.5px solid #fff;box-shadow:0 0 0 6px rgba(79,163,255,.22)}
+
+/* atrybucja też lądowała pod taśmą */
+.maplibregl-ctrl-bottom-right{bottom:calc(env(safe-area-inset-bottom) + 74px)}
+body.kalibracja .maplibregl-ctrl-bottom-right{bottom:0}
 
 .info{
   position:absolute;left:14px;right:14px;top:50%;z-index:9;transform:translateY(-50%);
@@ -165,6 +202,9 @@ body{
 /* ---------- tryb kalibracji (?kalibracja=1) ---------- */
 body.kalibracja .pin{pointer-events:none}
 body.kalibracja .tasma,body.kalibracja .tematy,body.kalibracja .oto{display:none}
+body.kalibracja .sterowanie{bottom:auto;top:calc(env(safe-area-inset-top) + 66px)}
+.kal .pewnosc{font-size:11px;color:var(--kamien);margin-top:3px;display:block}
+.kal .pewnosc[data-pewne="0"]{color:var(--zrodlo)}
 .kal,.kal-wynik{
   position:absolute;left:14px;right:14px;z-index:12;
   bottom:calc(env(safe-area-inset-bottom) + 14px);
@@ -209,9 +249,28 @@ body.kalibracja .tasma,body.kalibracja .tematy,body.kalibracja .oto{display:none
   <div class="tematy" id="tematy" role="group" aria-label="Temat"></div>
 </div>
 
-<button class="gps" id="gps" type="button" aria-label="Pokaż moją pozycję">
-  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg>
-</button>
+<div class="sterowanie" id="sterowanie">
+  <button class="ster zoom" id="zoom-plus" type="button" aria-label="Przybliż">+</button>
+  <button class="ster zoom" id="zoom-minus" type="button" aria-label="Oddal">−</button>
+  <button class="ster kompas" id="kompas" type="button" data-polnoc="1" aria-label="Obróć mapę na północ">
+    <span class="igla" id="igla">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 4.5l3.1 8.2L12 11.1l-3.1 1.6z" fill="#C9503F" stroke="none"/>
+        <path d="M12 19.5l-3.1-8.2L12 12.9l3.1-1.6z" fill="currentColor" stroke="none" opacity=".55"/>
+      </svg>
+    </span>
+    <b>N</b>
+  </button>
+  <button class="ster" id="widok3d" type="button" data-akt="1" aria-label="Przełącz widok płaski i przestrzenny">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3.2l8 4.4-8 4.4-8-4.4z" stroke-linejoin="round"/>
+      <path d="M4 12.2l8 4.4 8-4.4M4 16.4l8 4.4 8-4.4" stroke-linejoin="round" opacity=".55"/>
+    </svg>
+  </button>
+  <button class="ster" id="gps" type="button" aria-label="Pokaż moją pozycję">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg>
+  </button>
+</div>
 
 <div class="tasma" id="tasma"></div>
 
@@ -231,6 +290,7 @@ body.kalibracja .tasma,body.kalibracja .tematy,body.kalibracja .oto{display:none
     <button type="button" id="kal-koniec">Zakończ i pokaż kod</button>
   </div>
   <b id="kal-nazwa"></b>
+  <span class="pewnosc" id="kal-pewnosc"></span>
   <p>Kliknij w mapę dokładnie tam, gdzie to miejsce naprawdę jest.</p>
   <div class="kal-akcje">
     <button type="button" id="kal-pokaz">Pokaż obecną pinezkę</button>
@@ -257,7 +317,7 @@ body.kalibracja .tasma,body.kalibracja .tematy,body.kalibracja .oto{display:none
    adresu — kliknięcie w mapę kopiuje gotową linijkę do schowka.
    =================================================================== */
 
-const CENTRUM = [21.0254, 49.3956];               // rynek [lng, lat]
+const CENTRUM = [21.0242, 49.3982];               // rynek [lng, lat]
 const RAMY    = [[20.96, 49.35], [21.10, 49.44]]; // poza to nie wyjedziesz
 
 const KATEGORIE = {
@@ -288,89 +348,97 @@ const TEMATY = [
 const POI = [
   {
     id:'tyliczski', nazwa:'TYLICZ.ski', kat:'narty', tematy:['zima'],
-    lat:49.3985, lng:21.0196, partner:true, www:'https://tylicz.ski', osm:['tyliczski'],
-    opis:'Największa stacja w Tyliczu, przy ulicy Wolności — sześć kilometrów tras i dwie koleje krzesełkowe. Trasy naśnieżane, ratrakowane i oświetlone po zmierzchu, o długości od 150 do 1200 m. Osobne poletko dla początkujących i przedszkole narciarskie.'
+    lat:49.38539, lng:21.00426, pewne:true, partner:true, www:'https://tylicz.ski', osm:['tyliczski'],
+    opis:'Największa stacja w Tyliczu, na zachodnim krańcu wsi przy ulicy Wolności. Sześcioosobowa kolej gondolowa, dwie krzesełkowe i pięć wyciągów orczykowych — razem około dziesięciu kilometrów tras, wszystkie naśnieżane, ratrakowane i oświetlone. Osobne poletko dla początkujących i przedszkole narciarskie.',
+    wiedz:'Stok nosi nazwę Małej Jaworzyny. Najdłuższa oświetlona trasa mierzy tu 2600 m, a przepustowość całej stacji to czternaście tysięcy osób na godzinę — siedem razy więcej, niż Tylicz ma mieszkańców.'
   },
   {
     id:'kosciol', nazwa:'Kościół św. Piotra i Pawła', kat:'zabytek', tematy:['zabytki','konfederaci'],
-    lat:49.3951, lng:21.0262, osm:['piotraipawla','swpiotra'],
+    lat:49.39858, lng:21.02422, pewne:true, osm:['piotraipawla','swpiotra'],
     opis:'Drewniany, wzniesiony w 1612 r. z fundacji biskupa krakowskiego Piotra Tylickiego, konsekrowany dopiero pół wieku później. Konstrukcja zrębowa, jedna nawa, barokowa wieżyczka sygnaturkowa nad dachem. W prezbiterium trzy rokokowe ołtarze z drugiej połowy XVIII w., w głównym obraz Matki Boskiej Tylickiej z przełomu XVI i XVII w. Przed kościołem dzwonnica z dzwonem z 1665 r.',
     wiedz:'Wisi tu obraz świętej Barbary, patronki artylerzystów — według przekazów prywatny obraz Kazimierza Pułaskiego, który woził go ze sobą i wieszał w namiocie. Zostawił go tylickiemu kościołowi jako wotum. Chrzcielnica pochodzi ze szkoły Wita Stwosza, a krucyfiks rzeźbiony w jednym pniu jest jeszcze czternastowieczny.'
   },
   {
     id:'cerkiew', nazwa:'Cerkiew św. Kosmy i Damiana', kat:'zabytek', tematy:['zabytki'],
-    lat:49.3963, lng:21.0241, osm:['kosmy','damiana'],
+    lat:49.39537, lng:21.02811, pewne:true, osm:['kosmy','damiana'],
     opis:'Drewniana cerkiew greckokatolicka z lat 1738–1744, w typie zachodniołemkowskim: trójdzielna bryła, trzy wieże, wieża główna o konstrukcji słupowej. W środku osiemnastowieczny ikonostas i późnobarokowy ołtarz z ikoną Matki Bożej w drewnianej sukience. Dziś służy jako kościół cmentarny.',
     wiedz:'Polichromia z 1938 r. powstała na 950-lecie Chrztu Rusi — święte Olga i Włodzimierz wzorowane są na ikonach z kijowskiego Soboru św. Włodzimierza. W nawie wisi obraz Chrystusa w Ogrójcu z widocznym śladem po kuli, wystrzelonej przez słowackich żołnierzy w pierwszych dniach września 1939 r.'
   },
   {
     id:'rynek', nazwa:'Rynek', kat:'zabytek', tematy:['zabytki','konfederaci'],
-    lat:49.3956, lng:21.0254, osm:['rynek'],
+    lat:49.39800, lng:21.02400, pewne:true, osm:['rynek'],
     opis:'Czworoboczny plac z promieniście odchodzącymi uliczkami — zachowany średniowieczny układ miasteczka. Nawierzchnia od wieków z kocich łbów, od strony kościoła murowana kapliczka z 1808 r. Odbywały się tu cotygodniowe targi i cztery jarmarki rocznie.',
     wiedz:'Górę po południowej stronie do dziś nazywa się Szubienicą, a jej zbocza Łaskami. Tylicz miał własne sądownictwo i wyroki wykonywał u siebie.'
   },
   {
     id:'muzeum', nazwa:'Muzeum Dziejów Tylicza', kat:'konfederaci', tematy:['konfederaci','zabytki'],
-    lat:49.3958, lng:21.0251, osm:['muzeum','ratusz'],
+    lat:49.39617, lng:21.02613, pewne:false, osm:['muzeum','ratusz'],
     opis:'Mieści się w budynku dawnego ratusza przy rynku. Kilka sal z pamiątkami po konfederacji barskiej, galeria rzeźb i obrazów tylickich artystów, stroje regionalne — polskie i łemkowskie.',
     wiedz:'W dawnym ratuszu obradował sąd kryminalny Miastka. Dziś w tym samym miejscu działa wiejski dom kultury.'
   },
   {
     id:'huzary', nazwa:'Huzary (863 m)', kat:'widok', tematy:['konfederaci'],
-    lat:49.4070, lng:21.0030, osm:['huzary','czertez'],
+    lat:49.41425, lng:20.99231, pewne:true, osm:['huzary','czertez'],
     opis:'Szczyt nad Tyliczem, po łemkowsku Czerteż, czyli wykarczowany obszar. Wyjście z końca ulicy Biskupa Tylickiego, przez Szwarcową: dwie godziny w górę, godzina czterdzieści z powrotem. Z pierwszego wzniesienia panorama Tylicza, Muszynki, Przełęczy Tylickiej i słowackich gór na horyzoncie.',
     wiedz:'Nazwa wzięła się od węgierskich huzarów z prywatnej gwardii Pułaskiego, którzy odznaczyli się tu w bitwie z Rosjanami w 1770 r. Jeszcze przed wojną wyorano na zboczu szablę z datą 1747, znajdowano też osiemnastowieczny granat armatni.'
   },
   {
     id:'kopiec', nazwa:'Kopiec Pułaskiego', kat:'konfederaci', tematy:['konfederaci'],
-    lat:49.4045, lng:20.9975, osm:['kopiec','pulaskiego'],
+    lat:49.41207, lng:20.98038, pewne:false, osm:['kopiec','pulaskiego'],
     opis:'Siedmiometrowy kopiec na zboczu Huzarów, przy drodze z Krynicy do Tylicza. Na szczycie pomnik w kształcie graniastosłupa z orłem zrywającym się do lotu.',
     wiedz:'Usypany staraniem doktora Franciszka Kmietowicza, burmistrza Krynicy, i odsłonięty 25 sierpnia 1929 r. W czasach PRL temat konfederacji spychano na margines, bo była to wojna z Rosją.'
   },
   {
     id:'okopy', nazwa:'Okopy Konfederatów Barskich', kat:'konfederaci', tematy:['konfederaci'],
-    lat:49.3690, lng:21.0580, osm:['okopy','szaniec'],
+    lat:49.37200, lng:21.04500, pewne:false, osm:['okopy','szaniec'],
     opis:'Warowny obóz na grzbiecie góry Jawor nad Muszynką, usypany wiosną 1769 r. nad starym szlakiem handlowym przez Przełęcz Tylicką, żeby kontrolować przejście. Ponad 8400 m² — największe założenie konfederackie na Sądecczyźnie, przez pewien czas centralny ośrodek administracyjny konfederacji. Od 1963 r. rezerwat przyrodniczo-historyczny.',
     wiedz:'Pułaski przybył tu 26 września 1769 r. i wrócił w lipcu 1770. Gdy Rosjanie uderzyli, Austriacy wbrew umowie przepuścili ich przez granicę. Nieprzygotowany do obrony szaniec padł, Polacy stracili 179 ludzi.'
   },
   {
     id:'mofeta', nazwa:'Mofeta tylicka', kat:'przyroda', tematy:['woda','rodzina'],
-    lat:49.3908, lng:21.0331, osm:['mofeta'],
+    lat:49.38965, lng:21.00579, pewne:true, osm:['mofeta'],
     opis:'Największa mofeta w Karpatach. Jedenaście kręgów, każdy około metra średnicy i metra głębokości, a w nich blisko pięćdziesiąt bulgotek i dychawek, którymi z ziemi uchodzi dwutlenek węgla. W każdym kręgu woda smakuje inaczej. Udostępniona zwiedzającym w 2011 r., na terenie osady „Domki w Lesie”.',
     wiedz:'W latach sześćdziesiątych hodowano tu glony na pokarm dla radzieckich kosmonautów. Oficjalnie miała to być pasza dla zwierząt.'
   },
   {
     id:'zdroj', nazwa:'Zdrój Główny i Park Zdrojowy', kat:'woda', tematy:['woda','rodzina'],
-    lat:49.3938, lng:21.0285, osm:['zdrojglowny','pijalnia'],
+    lat:49.39620, lng:21.02700, pewne:false, osm:['zdrojglowny','pijalnia'],
     opis:'Źródło szczawy zabudowane stylową pijalnią na lewym brzegu Muszynki. Woda wodorowęglanowo-wapniowo-magnezowa, z żelazem i dwutlenkiem węgla. Wokół park z placem zabaw i siłownią plenerową.',
     wiedz:'Pierwsza wzmianka o źródle pochodzi z Księgi Miasta Tylicza z 1753 r. Zatrzymywały się przy nim karawany kupieckie ciągnące z Węgier do Sącza i Krakowa. Tylicz ma ponad osiemnaście udokumentowanych źródeł mineralnych.'
   },
   {
     id:'rakowsko', nazwa:'Ścieżka „Na Rakowsku”', kat:'przyroda', tematy:['woda','rodzina'],
-    lat:49.3985, lng:21.0105, osm:['rakowsk','zrodlowedrowcow'],
+    lat:49.39250, lng:20.99900, pewne:false, osm:['rakowsk','zrodlowedrowcow'],
     opis:'Ścieżka przyrodniczo-edukacyjna: cztery kilometry i dziewięć przystanków tematycznych, prowadzona przez gminę wspólnie z Leśnym Zakładem Doświadczalnym. Zaczyna się przy źródełku dwa kilometry od centrum, zwanym Źródłem Wędrowców, i biegnie przez Bradowiec do przełomu Muszynki. Kończy się przy dawnym kamieniołomie.',
     wiedz:'Przez Przełęcz Tylicką zalatują tu owady z cieplejszej, południowej strony Karpat. Trafia się nadobnica alpejska — rzadka, popielatobłękitna kózka z czarnymi plamami.'
   },
   {
     id:'przelecz', nazwa:'Przełęcz Tylicka (683 m)', kat:'widok', tematy:['konfederaci'],
-    lat:49.3760, lng:21.0480, osm:['przelecztylicka'],
+    lat:49.37200, lng:21.05500, pewne:false, osm:['przelecztylicka'],
     opis:'Najniższe przejście w tej części Karpat, którym od średniowiecza szedł szlak handlowy na Węgry, do Bardiowa. Przy dawnym przejściu granicznym Muszynka–Kurov stoi altanka. Odcinek biegnący wzdłuż granicy ze Słowacją uchodzi za najładniejszy fragment tutejszych szlaków.',
     wiedz:'To przełęcz dała Tyliczowi rację bytu. Osada Ornawa powstała w XIII w. właśnie przy tym trakcie, a handel z Węgrami utrzymywał miasteczko przez kilkaset lat.'
   },
   {
     id:'masterski', nazwa:'Centrum Master-Ski', kat:'narty', tematy:['zima'],
-    lat:49.3948, lng:21.0288, osm:['masterski'],
+    lat:49.39321, lng:21.02751, pewne:true, osm:['masterski'],
     opis:'Rodzinny ośrodek na północnych stokach w samym centrum Tylicza, przy ulicy Pułaskiego, na wysokości 680 m n.p.m. Czteroosobowa kolej krzesełkowa i trzy wyciągi, najdłuższa trasa 1350 m, najkrótsza 150 m. Funpark z przejazdem przez tunel, przedszkole narciarskie, wypożyczalnia i karczma.'
   },
   {
-    id:'farmalama', nazwa:'Farma Lama', kat:'rodzina', tematy:['rodzina'],
-    lat:49.3925, lng:21.0215, osm:['farmalama'],
-    opis:'Stadnina z mini zoo — konie, kozy, krowy, owce i kucyki dla najmłodszych. Jazda konna na odkrytej arenie i w krytej ujeżdżalni, dla zaawansowanych wyjazdy w Beskid. Zimą kuligi i ogniska.'
+    id:'farmalama', nazwa:'Farma LaMa', kat:'rodzina', tematy:['rodzina'],
+    lat:49.39556, lng:21.02778, pewne:true, osm:['farmalama'],
+    opis:'Gospodarstwo przy ulicy Konfederatów Barskich, kilkaset metrów za rynkiem, w stronę Muszynki — tuż obok cerkwi i cmentarza. Mini zoo z lamami i alpakami, do tego kozy, owce, kucyki i pawie. Jazda konna na odkrytej arenie i w krytej ujeżdżalni, hipoterapia, zimą kuligi i ogniska.'
   },
   {
     id:'imieniamaryi', nazwa:'Kościół Imienia Maryi', kat:'zabytek', tematy:['zabytki'],
-    lat:49.3948, lng:21.0267, osm:['imieniamaryi'],
-    opis:'Nowa świątynia parafialna tuż obok drewnianego kościółka. Murowana z cegły i kamienia, ale bryłą świadomie nawiązuje do drewnianych kościołów i cerkwi regionu. Obok stoi Golgota.'
+    lat:49.39859, lng:21.02334, pewne:true, osm:['imieniamaryi'],
+    opis:'Nowa świątynia parafialna tuż obok drewnianego kościółka, od 2016 r. Sanktuarium Matki Bożej Tylickiej. Murowana z cegły i kamienia, ale bryłą świadomie nawiązuje do drewnianych kościołów i cerkwi regionu.',
+    wiedz:'Kamień węgielny poświęcił Jan Paweł II w 1999 r. Odpust ku czci Matki Bożej Tylickiej trwa trzy dni i wypada w pierwszy weekend września.'
+  },
+  {
+    id:'golgota', nazwa:'Golgota i Dróżki Maryjne', kat:'zabytek', tematy:['zabytki','rodzina'],
+    lat:49.39940, lng:21.02230, pewne:false,
+    opis:'Kamienna Golgota z 2012 r., wysoka na dwadzieścia pięć metrów, wzniesiona tuż nad kościołami. Wokół dróżki różańcowe z dwudziestoma kapliczkami i różaniec ułożony z głazów. Ze szczytu widać całą kotlinę Tylicza.',
+    wiedz:'W ściany wmurowano tysiące kamieni przywiezionych przez pielgrzymów z całego świata — każdy z nazwą miejsca, z którego pochodzi.'
   }
 ];
 
@@ -389,6 +457,7 @@ const O_TYLICZU = {
 
 const nietDrgania = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const KAL = new URLSearchParams(location.search).get('kalibracja') === '1';
+const PRZYKLEJ = new URLSearchParams(location.search).get('przyklej') === '1';
 let temat = 'wszystko', wybrany = null, pinezki = {}, mojaPozycja = null,
     znacznikJa = null, obserwator = null, dojechalo = false;
 
@@ -403,8 +472,29 @@ const map = new maplibregl.Map({
   fadeDuration:0, refreshExpiredTiles:false,
   attributionControl:{compact:true}
 });
-map.addControl(new maplibregl.NavigationControl({visualizePitch:true}), 'bottom-left');
 map.touchZoomRotate.enableRotation();
+
+/* Własne sterowanie zamiast NavigationControl — tamto siadało
+   w lewym dolnym rogu, pod taśmą kafelków, więc było nieklikalne. */
+const igla = $('#igla'), kompas = $('#kompas'), przyciskWidok = $('#widok3d');
+
+function odswiezKompas(){
+  const b = map.getBearing();
+  igla.style.transform = 'rotate(' + (-b) + 'deg)';
+  kompas.dataset.polnoc = Math.abs(b) < 1 ? '1' : '0';
+  przyciskWidok.dataset.akt = map.getPitch() > 8 ? '1' : '0';
+}
+map.on('rotate', odswiezKompas);
+map.on('pitch', odswiezKompas);
+
+kompas.addEventListener('click', () =>
+  map.easeTo({bearing:0, duration: nietDrgania ? 0 : 700}));
+przyciskWidok.addEventListener('click', () => {
+  const plasko = map.getPitch() > 8;
+  map.easeTo({pitch: plasko ? 0 : 50, duration: nietDrgania ? 0 : 700});
+});
+$('#zoom-plus').addEventListener('click', () => map.zoomIn({duration:300}));
+$('#zoom-minus').addEventListener('click', () => map.zoomOut({duration:300}));
 
 map.on('load', () => {
   if(map.setSky){
@@ -416,6 +506,7 @@ map.on('load', () => {
   const wektor = zrodloWektorowe();
   odchudzStyl();
   dodajLasy(wektor);
+  dodajRzeki(wektor);
   dodajBudynki(wektor);
   dodajWyciagi(wektor);
   przygotujDrzewa();
@@ -425,6 +516,7 @@ map.on('load', () => {
   rysujPinezki();
   budujTematy();
   budujTasme();
+  odswiezKompas();
 });
 
 /* Liberty ma około stu pięćdziesięciu warstw. Numery domów i lotniska
@@ -470,8 +562,14 @@ function wlaczTeren(){
   else if(JAKOSC === 'pelna'){ czujnikStop = true; }
   else map.on('render', czujnik);
 
-  przyklejDoOSM();
-  map.on('idle', przyklejDoOSM);
+  /* Przyklejanie do OSM bywa gorsze od wpisanej współrzędnej: dopasowanie
+     po nazwie potrafi trafić w sąsiedni budynek albo w środek dużego
+     wieloboku. Od teraz jest na żądanie — ?przyklej=1 — a normalnie
+     pinezka stoi tam, gdzie ją postawiono. */
+  if(PRZYKLEJ){
+    przyklejDoOSM();
+    map.on('idle', przyklejDoOSM);
+  }
   map.on('idle', rozsypDrzewa);
 
   if(new URLSearchParams(location.search).get('osm') === '1'){
@@ -492,6 +590,88 @@ const pierwszySymbol = () => {
   const l = map.getStyle().layers.find(x => x.type === 'symbol');
   return l ? l.id : undefined;
 };
+
+/* ===================================================================
+   RZEKI — Muszynka i Mochnaczka
+
+   Tylicz leży w widłach dwóch potoków i to jest jego kształt, więc
+   woda dostaje trzy warstwy zamiast jednej kreski: poświatę pod
+   spodem, nurt, i cienką jasną nitkę z przesuwającą się kreską.
+   Nitka płynie, reszta stoi — stąd wrażenie migotania.
+   =================================================================== */
+
+const WODA_GLAB = '#1D4F6B', WODA_NURT = '#3E87A8', WODA_BLYSK = '#CFEAF4';
+const CIEKI = ['match',['get','class'],['river','stream','canal'],true,false];
+
+const ISKRY = [
+  [0,4,3],[0.5,4,2.5],[1,4,2],[1.5,4,1.5],[2,4,1],[2.5,4,0.5],[3,4,0],
+  [0,0.5,3,2.5],[0,1,3,2],[0,1.5,3,1.5],[0,2,3,1],[0,2.5,3,0.5]
+];
+let iskraKrok = 0, iskraTimer = null;
+
+function dodajRzeki(wektor){
+  if(!wektor) return;
+
+  /* styl bazowy rysuje własne cieki — wyłączamy, żeby nie dublować */
+  map.getStyle().layers.forEach(l => {
+    if(l['source-layer'] === 'waterway' && l.type === 'line'){
+      try{ map.setLayoutProperty(l.id, 'visibility', 'none'); }catch(e){}
+    }
+    if(l['source-layer'] === 'water' && l.type === 'fill'){
+      try{ map.setPaintProperty(l.id, 'fill-color', WODA_NURT); }catch(e){}
+    }
+  });
+
+  const szer = (r, s, d) => ['interpolate',['linear'],['zoom'],
+    13,['match',['get','class'],'river',r*.45,s*.45],
+    16,['match',['get','class'],'river',r,s],
+    19,['match',['get','class'],'river',r*1.9,s*1.9]];
+
+  try{
+    map.addLayer({
+      id:'rzeka-poswiata', type:'line', source:wektor, 'source-layer':'waterway',
+      minzoom:12, filter:CIEKI, layout:{'line-cap':'round','line-join':'round'},
+      paint:{'line-color':WODA_BLYSK,'line-width':szer(13,7),'line-opacity':.16,'line-blur':4}
+    }, pierwszySymbol());
+
+    map.addLayer({
+      id:'rzeka-nurt', type:'line', source:wektor, 'source-layer':'waterway',
+      minzoom:12, filter:CIEKI, layout:{'line-cap':'round','line-join':'round'},
+      paint:{
+        'line-color':['interpolate',['linear'],['zoom'],13,WODA_GLAB,17,WODA_NURT],
+        'line-width':szer(6,3),'line-opacity':.95
+      }
+    }, pierwszySymbol());
+
+    map.addLayer({
+      id:'rzeka-iskra', type:'line', source:wektor, 'source-layer':'waterway',
+      minzoom:14, filter:CIEKI, layout:{'line-cap':'butt'},
+      paint:{
+        'line-color':WODA_BLYSK,'line-width':szer(2,1.1),
+        'line-opacity':.85,'line-dasharray':ISKRY[0]
+      }
+    }, pierwszySymbol());
+  }catch(e){ console.warn('Brak warstw rzek:', e); return; }
+
+  if(!nietDrgania) ruszIskry();
+}
+
+function ruszIskry(){
+  if(iskraTimer || nietDrgania) return;
+  iskraTimer = setInterval(() => {
+    if(document.hidden || !map.getLayer('rzeka-iskra')) return;
+    iskraKrok = (iskraKrok + 1) % ISKRY.length;
+    try{
+      map.setPaintProperty('rzeka-iskra', 'line-dasharray', ISKRY[iskraKrok]);
+      map.setPaintProperty('rzeka-poswiata', 'line-opacity',
+        .13 + .07 * Math.sin(iskraKrok / ISKRY.length * Math.PI * 2));
+    }catch(e){}
+  }, 85);
+}
+
+function stopIskry(){
+  if(iskraTimer){ clearInterval(iskraTimer); iskraTimer = null; }
+}
 
 /* Lasy jako bryły, nie płaskie plamy. Pojedynczych drzew nie ma
    w kafelkach wektorowych, ale wyciągnięty okap czyta się z góry
@@ -536,50 +716,105 @@ function szum(t){
   return ((h >>> 0) % 100000) / 100000;
 }
 
-function rysujDrzewo(iglak){
+/* Drzewa rysujemy w dwukrotnej skali i oddajemy z pixelRatio 2 —
+   na ekranach o dużej gęstości korony przestają być rozmyte.
+   Światło pada z lewej góry, tak samo jak w cieniowaniu zboczy. */
+const RODZAJE = ['swierk','jodla','buk'];
+
+function rysujDrzewo(rodzaj){
+  const S = 2, W = 48, H = 66;
   const c = document.createElement('canvas');
-  c.width = 48; c.height = 64;
+  c.width = W * S; c.height = H * S;
   const g = c.getContext('2d');
+  g.scale(S, S);
 
-  g.fillStyle = '#5B4630';
-  g.fillRect(21, 40, 6, 24);
+  /* cień na ziemi — bez niego drzewo wisi w powietrzu */
+  g.fillStyle = 'rgba(18,38,26,.28)';
+  g.beginPath(); g.ellipse(24, 62, 13, 4, 0, 0, Math.PI * 2); g.fill();
 
-  if(iglak){
-    g.fillStyle = '#2F5233';
-    [[24,2,15,26],[24,16,18,28],[24,30,20,26]].forEach(([x,y,w,h]) => {
-      g.beginPath(); g.moveTo(x, y); g.lineTo(x - w, y + h); g.lineTo(x + w, y + h);
-      g.closePath(); g.fill();
-    });
-    g.fillStyle = 'rgba(120,170,110,.35)';
-    g.beginPath(); g.moveTo(24,2); g.lineTo(14,28); g.lineTo(24,28); g.closePath(); g.fill();
+  const pien = (szer, wys, barwa) => {
+    g.fillStyle = barwa;
+    g.beginPath();
+    g.moveTo(24 - szer, 63);
+    g.lineTo(24 - szer * .6, 63 - wys);
+    g.lineTo(24 + szer * .6, 63 - wys);
+    g.lineTo(24 + szer, 63);
+    g.closePath(); g.fill();
+  };
+
+  /* stożek o poszarpanym dolnym brzegu — piła zamiast prostej kreski */
+  const pietro = (y, wys, polSzer, barwa) => {
+    g.fillStyle = barwa;
+    g.beginPath();
+    g.moveTo(24, y);
+    const zeby = 5, dol = y + wys;
+    for(let i = 0; i <= zeby; i++){
+      const t = i / zeby;
+      g.lineTo(24 + polSzer * t, dol - (i % 2 ? 3.2 : 0));
+    }
+    for(let i = zeby; i >= 0; i--){
+      const t = i / zeby;
+      g.lineTo(24 - polSzer * t, dol - (i % 2 ? 3.2 : 0));
+    }
+    g.closePath(); g.fill();
+  };
+
+  if(rodzaj === 'swierk' || rodzaj === 'jodla'){
+    const jodla = rodzaj === 'jodla';
+    pien(3.2, 20, '#4A3A28');
+    const ciemny = jodla ? '#254A33' : '#2C5636';
+    const jasny  = jodla ? '#37694A' : '#3F7444';
+    const gora   = jodla ? 4 : 8;
+    const tiers = jodla
+      ? [[gora,17,8],[gora+9,19,12],[gora+20,20,15.5],[gora+32,18,18]]
+      : [[gora,16,8.5],[gora+9,18,12.5],[gora+19,19,16],[gora+30,16,18.5]];
+
+    tiers.forEach(([y,h,s], i) => pietro(y, h, s, i > 1 ? ciemny : jasny));
+    /* przyświetlony lewy bok */
+    g.save();
+    g.beginPath(); g.rect(0, 0, 24, H); g.clip();
+    g.globalAlpha = .22; g.fillStyle = '#CFE3B4';
+    tiers.forEach(([y,h,s]) => pietro(y, h, s * .82, '#CFE3B4'));
+    g.restore();
+    g.globalAlpha = 1;
   }else{
-    g.fillStyle = '#3E6B38';
-    [[24,24,19],[14,30,12],[34,30,12],[24,36,15]].forEach(([x,y,r]) => {
-      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
-    });
-    g.fillStyle = 'rgba(140,185,120,.4)';
-    g.beginPath(); g.arc(18, 20, 10, 0, Math.PI * 2); g.fill();
+    pien(3.6, 16, '#54412D');
+    const plamy = [[24,26,15],[14,32,11],[34,32,11],[19,21,10],[30,20,9.5],[24,38,13]];
+    g.fillStyle = '#3A6B3B';
+    plamy.forEach(([x,y,r]) => { g.beginPath(); g.arc(x, y, r, 0, Math.PI*2); g.fill(); });
+    g.fillStyle = 'rgba(20,48,30,.34)';
+    [[31,34,9],[26,40,9]].forEach(([x,y,r]) => { g.beginPath(); g.arc(x, y, r, 0, Math.PI*2); g.fill(); });
+    g.fillStyle = 'rgba(163,199,126,.45)';
+    [[17,20,8],[22,15,5.5]].forEach(([x,y,r]) => { g.beginPath(); g.arc(x, y, r, 0, Math.PI*2); g.fill(); });
   }
-  return g.getImageData(0, 0, 48, 64);
+
+  return {data: g.getImageData(0, 0, W * S, H * S), pixelRatio: S};
 }
 
 function przygotujDrzewa(){
   try{
-    if(!map.hasImage('drzewo-iglak')) map.addImage('drzewo-iglak', rysujDrzewo(true));
-    if(!map.hasImage('drzewo-lisc'))  map.addImage('drzewo-lisc',  rysujDrzewo(false));
-  }catch(e){ return; }
+    RODZAJE.forEach(r => {
+      const id = 'drzewo-' + r;
+      if(map.hasImage(id)) return;
+      const o = rysujDrzewo(r);
+      map.addImage(id, o.data, {pixelRatio: o.pixelRatio});
+    });
+  }catch(e){ console.warn('Drzewa niedostępne:', e); return; }
 
   map.addSource('drzewa-src', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
   map.addLayer({
     id:'drzewa', type:'symbol', source:'drzewa-src', minzoom:15,
     layout:{
-      'icon-image':['match',['get','rodzaj'],'iglak','drzewo-iglak','drzewo-lisc'],
-      'icon-size':['interpolate',['linear'],['zoom'],15,.18,18,.75,20,1.3],
+      'icon-image':['concat','drzewo-',['get','rodzaj']],
+      'icon-size':['*',
+        ['interpolate',['linear'],['zoom'],15,.2,18,.8,20,1.35],
+        ['coalesce',['get','w'],1]],
       'icon-anchor':'bottom',
       'icon-allow-overlap':true,
       'icon-ignore-placement':true,
       'icon-pitch-alignment':'viewport',
-      'icon-rotation-alignment':'viewport'
+      'icon-rotation-alignment':'viewport',
+      'symbol-z-order':'viewport-y'
     },
     paint:{'icon-opacity':['interpolate',['linear'],['zoom'],15,0,15.9,1]}
   });
@@ -629,7 +864,12 @@ function rozsypDrzewa(){
           const px = ln + (h - .5) * KROK_LNG * 1.1;
           const py = la + (((h * 7.31) % 1) - .5) * KROK * 1.1;
           if(!wPoligonie([px, py], ring)) continue;
-          drzewa.set(klucz, {lng:px, lat:py, rodzaj: ((h * 13.7) % 1) > .45 ? 'iglak' : 'lisc'});
+          const los = (h * 13.7) % 1;
+          drzewa.set(klucz, {
+            lng:px, lat:py,
+            rodzaj: los < .44 ? 'swierk' : los < .70 ? 'jodla' : 'buk',
+            w: +(0.78 + ((h * 29.3) % 1) * 0.44).toFixed(2)
+          });
         }
       }
     });
@@ -640,7 +880,7 @@ function rozsypDrzewa(){
     type:'FeatureCollection',
     features:[...drzewa.values()].map(d => ({
       type:'Feature',
-      properties:{rodzaj:d.rodzaj},
+      properties:{rodzaj:d.rodzaj, w:d.w},
       geometry:{type:'Point', coordinates:[d.lng, d.lat]}
     }))
   });
@@ -1057,6 +1297,7 @@ function naCieniowanie(){
     }, podKtora);
     if(map.getLayer('lasy')) map.removeLayer('lasy');
     if(map.getLayer('drzewa')) map.removeLayer('drzewa');
+    stopIskry();
     map.setMaxPitch(46);
     if(map.getPitch() > 46) map.easeTo({pitch:46, duration:400});
   }catch(e){ console.warn('Cieniowanie niedostępne:', e); }
@@ -1104,6 +1345,13 @@ let kalIdx = 0;
 const kalWynik = POI.map(p => JSON.parse(JSON.stringify(p)));
 const kalRuszone = new Set();
 
+/* Najpierw punkty oznaczone jako niepewne — to one wymagają oka
+   kogoś, kto zna Tylicz. Tablica na wyjściu zachowuje pierwotną
+   kolejność, przestawiona jest tylko kolejność pytań. */
+const KOLEJNOSC = kalWynik.map((p, i) => i)
+  .sort((a, b) => (kalWynik[a].pewne ? 1 : 0) - (kalWynik[b].pewne ? 1 : 0));
+const kalBiezacy = () => kalWynik[KOLEJNOSC[kalIdx]];
+
 function startKalibracji(){
   document.body.classList.add('kalibracja');
   map.setMaxZoom(19);
@@ -1114,20 +1362,27 @@ function startKalibracji(){
 
 function kalPokazKrok(){
   if(kalIdx >= kalWynik.length){ kalKoniec(); return; }
-  const p = kalWynik[kalIdx];
+  const p = kalBiezacy();
   $('#kal-licznik').textContent =
     'Punkt ' + (kalIdx + 1) + ' z ' + kalWynik.length +
     ' · poprawionych: ' + kalRuszone.size;
   $('#kal-nazwa').textContent = p.nazwa;
+
+  const pew = $('#kal-pewnosc');
+  pew.dataset.pewne = p.pewne ? '1' : '0';
+  pew.textContent = p.pewne
+    ? 'Współrzędne potwierdzone źródłem — sprawdź tylko pobieżnie.'
+    : 'Współrzędne szacowane — to miejsce warto wskazać dokładnie.';
 
   Object.entries(pinezki).forEach(([id, m]) =>
     m.getElement().classList.toggle('wybrany', id === p.id));
 }
 
 function kalUstaw(lngLat){
-  const p = kalWynik[kalIdx];
+  const p = kalBiezacy();
   p.lat = +lngLat.lat.toFixed(5);
   p.lng = +lngLat.lng.toFixed(5);
+  p.pewne = true;                     // wskazane ręcznie, czyli sprawdzone
   kalRuszone.add(p.id);
   pinezki[p.id].setLngLat([p.lng, p.lat]);
   kalIdx++;
@@ -1144,7 +1399,7 @@ if(KAL){
   map.on('click', e => kalUstaw(e.lngLat));
 
   $('#kal-pokaz').addEventListener('click', () => {
-    const p = kalWynik[kalIdx];
+    const p = kalBiezacy();
     if(p) map.easeTo({center:[p.lng, p.lat], zoom:17, duration:700});
   });
   $('#kal-pomin').addEventListener('click', () => { kalIdx++; kalPokazKrok(); });
