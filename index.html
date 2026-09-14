@@ -423,6 +423,18 @@ const POI = [
   }
 ];
 
+/* Zabytki, które zamiast pudełka z OSM dostają własną bryłę.
+   `obrot` to kierunek dłuższej osi w stopniach: 0 to północ, 90 to
+   wschód. Świątynie stawiano prezbiterium na wschód, więc 90 jest
+   punktem wyjścia — jeśli budynek stoi krzywo względem podkładu,
+   poprawia się tutaj, o kilka stopni. */
+const BRYLY = [
+  {typ:'kosciol-drewniany', lat:49.39858, lng:21.02422, obrot:90},
+  {typ:'kosciol-murowany',  lat:49.39859, lng:21.02334, obrot:90},
+  {typ:'cerkiew',           lat:49.39537, lng:21.02811, obrot:90},
+  {typ:'wieza',             lat:49.39940, lng:21.02230, obrot:0}
+];
+
 const O_TYLICZU = {
   meta:'Dawne miasteczko · Beskid Sądecki',
   akapity:[
@@ -489,8 +501,10 @@ map.on('load', () => {
   dodajLasy(wektor);
   dodajRzeki(wektor);
   dodajBudynki(wektor);
+  dodajBrylyZabytkow();
   dodajWyciagi(wektor);
   przygotujDrzewa();
+  przygotujAuta();
   wyroznijSciezki(wektor);
   nazwyUlic();
   szczyty(wektor);
@@ -552,6 +566,7 @@ function wlaczTeren(){
     map.on('idle', przyklejDoOSM);
   }
   map.on('idle', rozsypDrzewa);
+  map.on('idle', zbierzDrogi);
 
   if(new URLSearchParams(location.search).get('osm') === '1'){
     map.fitBounds(RAMY, {duration:0});
@@ -870,6 +885,198 @@ function rozsypDrzewa(){
 /* Wyciągi i koleje linowe — OSM trzyma je w warstwie transportu
    jako klasę aerialway. Cienka linia plus poprzeczki, czyli tak,
    jak rysuje się je na mapach turystycznych. */
+/* ===================================================================
+   RUCH NA DROGACH
+
+   Drogi wyciągamy z tych samych kafelków co lasy, liczymy długość
+   każdego odcinka i puszczamy po nich autka. Auto pamięta, ile
+   metrów przejechało od początku trasy — dzięki temu jedzie równo
+   niezależnie od tego, jak gęsto rozłożone są punkty załamania.
+   Na końcu zawraca, bo znikanie i pojawianie się rzucałoby się
+   w oczy bardziej niż nawrót.
+   =================================================================== */
+
+const DROGI_KLASY = ['trunk','primary','secondary','tertiary','minor'];
+const BARWY_AUT = ['#B84A3A','#2F5E86','#DCD8D0','#3A3E3C','#7E8B6A'];
+const AUTA_ILE = 22;
+
+const trasy = [], trasyKlucze = new Set(), auta = [];
+let autaTimer = null;
+
+function zaokraglony(g, x, y, w, h, r){
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r);
+  g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r);
+  g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y);
+  g.closePath();
+}
+
+/* Auto widziane z góry, przodem do północy — obrót załatwia
+   już warstwa, przez icon-rotate. */
+function rysujAuto(barwa){
+  const S = 2, W = 14, H = 24;
+  const c = document.createElement('canvas');
+  c.width = W * S; c.height = H * S;
+  const g = c.getContext('2d');
+  g.scale(S, S);
+
+  g.fillStyle = 'rgba(16,30,22,.34)';
+  zaokraglony(g, 3.4, 3.4, 8, 18.5, 2.4); g.fill();
+
+  g.fillStyle = barwa;
+  zaokraglony(g, 2.8, 2, 8.4, 19, 2.6); g.fill();
+
+  /* dach jaśniejszy od nadwozia, żeby bryła nie była płaską plamą */
+  g.globalAlpha = .22; g.fillStyle = '#FFFFFF';
+  zaokraglony(g, 3.6, 7, 6.8, 9, 1.6); g.fill();
+  g.globalAlpha = 1;
+
+  g.fillStyle = 'rgba(24,36,30,.62)';
+  zaokraglony(g, 3.8, 5.2, 6.4, 2.6, 1); g.fill();     // przednia szyba
+  zaokraglony(g, 3.8, 15.4, 6.4, 2.4, 1); g.fill();    // tylna szyba
+
+  g.fillStyle = '#FFF3D0';
+  g.fillRect(3.6, 2.2, 1.8, 1.1); g.fillRect(8.6, 2.2, 1.8, 1.1);
+  g.fillStyle = '#C0503F';
+  g.fillRect(3.6, 19.8, 1.8, 1); g.fillRect(8.6, 19.8, 1.8, 1);
+
+  return {data: g.getImageData(0, 0, W * S, H * S), pixelRatio: S};
+}
+
+function przygotujAuta(){
+  try{
+    BARWY_AUT.forEach((barwa, i) => {
+      const id = 'auto-' + i;
+      if(map.hasImage(id)) return;
+      const o = rysujAuto(barwa);
+      map.addImage(id, o.data, {pixelRatio: o.pixelRatio});
+    });
+  }catch(e){ console.warn('Brak ikon aut:', e); return; }
+
+  map.addSource('auta-src', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
+  map.addLayer({
+    id:'auta', type:'symbol', source:'auta-src', minzoom:14.8,
+    layout:{
+      'icon-image':['get','ikona'],
+      'icon-rotate':['get','kat'],
+      'icon-rotation-alignment':'map',
+      'icon-pitch-alignment':'map',
+      'icon-allow-overlap':true,
+      'icon-ignore-placement':true,
+      'icon-size':['interpolate',['linear'],['zoom'],15,.34,17,.72,19,1.3]
+    },
+    paint:{'icon-opacity':['interpolate',['linear'],['zoom'],14.8,0,15.3,1]}
+  });
+}
+
+function zbierzDrogi(){
+  if(KAL || poziom >= 2 || trasy.length >= 70) return;
+  if(map.getZoom() < 14.5 || !map.getSource('auta-src')) return;
+  const wektor = zrodloWektorowe(); if(!wektor) return;
+
+  let cechy = [];
+  try{ cechy = map.querySourceFeatures(wektor, {sourceLayer:'transportation'}); }
+  catch(e){ return; }
+
+  cechy.forEach(x => {
+    const w = x.properties || {};
+    if(DROGI_KLASY.indexOf(w.class) < 0) return;
+    if(w.brunnel === 'tunnel') return;
+    const g = x.geometry; if(!g) return;
+    const linie = g.type === 'LineString' ? [g.coordinates]
+                : g.type === 'MultiLineString' ? g.coordinates : [];
+
+    linie.forEach(l => {
+      if(l.length < 2 || trasy.length >= 70) return;
+      const klucz = l[0][0].toFixed(4) + ',' + l[0][1].toFixed(4) + '|' +
+                    l[l.length-1][0].toFixed(4) + ',' + l[l.length-1][1].toFixed(4);
+      if(trasyKlucze.has(klucz)) return;
+
+      const odc = []; let suma = 0;
+      for(let i = 1; i < l.length; i++){
+        const d = odleglosc(l[i-1], l[i]);
+        odc.push(d); suma += d;
+      }
+      if(suma < 90) return;
+
+      trasyKlucze.add(klucz);
+      trasy.push({p:l, odc, suma, glowna: w.class !== 'minor'});
+    });
+  });
+
+  uzupelnijAuta();
+}
+
+function uzupelnijAuta(){
+  if(!trasy.length) return;
+  while(auta.length < AUTA_ILE){
+    const t = trasy[Math.floor(Math.random() * trasy.length)];
+    auta.push({
+      t, s: Math.random() * t.suma,
+      kier: Math.random() < .5 ? 1 : -1,
+      v: (t.glowna ? 8.5 : 5) + Math.random() * 4,
+      ikona: 'auto-' + Math.floor(Math.random() * BARWY_AUT.length)
+    });
+  }
+  if(!nietDrgania) ruszAuta();
+  else rysujAutaRaz();
+}
+
+function gdzieJest(a){
+  const t = a.t;
+  let s = a.s, i = 0;
+  while(i < t.odc.length && s > t.odc[i]){ s -= t.odc[i]; i++; }
+  if(i >= t.odc.length){ i = t.odc.length - 1; s = t.odc[i]; }
+
+  const p0 = t.p[i], p1 = t.p[i+1];
+  const u = t.odc[i] ? s / t.odc[i] : 0;
+  const lng = p0[0] + (p1[0] - p0[0]) * u;
+  const lat = p0[1] + (p1[1] - p0[1]) * u;
+
+  let kat = Math.atan2((p1[0] - p0[0]) * Math.cos(lat * Math.PI / 180),
+                       p1[1] - p0[1]) * 180 / Math.PI;
+  if(a.kier < 0) kat += 180;
+  return {lng, lat, kat};
+}
+
+function rysujAutaRaz(){
+  const z = map.getSource('auta-src'); if(!z) return;
+  z.setData({
+    type:'FeatureCollection',
+    features: auta.map(a => {
+      const q = gdzieJest(a);
+      return {
+        type:'Feature',
+        properties:{ikona:a.ikona, kat:q.kat},
+        geometry:{type:'Point', coordinates:[q.lng, q.lat]}
+      };
+    })
+  });
+}
+
+function ruszAuta(){
+  if(autaTimer || nietDrgania) return;
+  autaTimer = setInterval(() => {
+    if(document.hidden || !auta.length || !map.getSource('auta-src')) return;
+    if(map.getZoom() < 14.8) return;
+    const dt = .05;
+    auta.forEach(a => {
+      a.s += a.v * dt * a.kier;
+      if(a.s > a.t.suma){ a.s = a.t.suma; a.kier = -1; }
+      if(a.s < 0){ a.s = 0; a.kier = 1; }
+    });
+    rysujAutaRaz();
+  }, 50);
+}
+
+function stopAuta(){
+  if(autaTimer){ clearInterval(autaTimer); autaTimer = null; }
+  auta.length = 0;
+  if(map.getLayer('auta')) map.removeLayer('auta');
+}
+
 function dodajWyciagi(wektor){
   if(!wektor) return;
   const filtr = ['==',['get','class'],'aerialway'];
@@ -907,6 +1114,141 @@ function dodajBudynki(wektor){
       }
     }, pierwszySymbol());
   }catch(e){ console.warn('Brak warstwy budynków:', e); }
+}
+
+/* ===================================================================
+   BRYŁY ZABYTKÓW
+
+   Kafelki wektorowe dają każdemu budynkowi jedną wysokość, więc
+   kościół wychodzi z nich takim samym pudełkiem jak stodoła.
+   Tutaj cztery zabytki dostają własne bryły, składane z prostopad-
+   łościanów: fill-extrusion nie umie skosu, ale kilka coraz węższych
+   pięter jedno na drugim czyta się z góry jak dach, a na wieży jak
+   hełm. Bryła jest celowo szersza od obrysu z OSM, żeby schować
+   pudełko, które nadal siedzi pod spodem.
+   =================================================================== */
+
+const DREWNO = '#9A7A52', MUR = '#D6CFC2', KAMIEN = '#B9B2A4',
+      DACH = '#454F4A', KOPULA = '#6F7D77', ZLOTO = '#C08A3E';
+
+/* Prostopadłościan: środek przesunięty o `wzdluz` metrów wzdłuż osi
+   długiej, wymiary w metrach, wysokości liczone od gruntu. */
+function kloc(baza, srodek, obrot, wzdluz, dlugosc, szerokosc, dol, gora, barwa){
+  const r = obrot * Math.PI / 180;
+  const naStopien = 1 / 111320;
+  const naStopienLng = naStopien / Math.cos(srodek[1] * Math.PI / 180);
+
+  /* wektor osi długiej i prostopadłej, w metrach */
+  const ux = Math.sin(r), uy = Math.cos(r);
+  const px = Math.cos(r), py = -Math.sin(r);
+
+  const cx = ux * wzdluz, cy = uy * wzdluz;
+  const naroza = [[-1,-1],[1,-1],[1,1],[-1,1],[-1,-1]].map(([a,b]) => {
+    const mx = cx + ux * (dlugosc / 2) * a + px * (szerokosc / 2) * b;
+    const my = cy + uy * (dlugosc / 2) * a + py * (szerokosc / 2) * b;
+    return [srodek[0] + mx * naStopienLng, srodek[1] + my * naStopien];
+  });
+
+  baza.push({
+    type:'Feature',
+    properties:{dol, gora, barwa},
+    geometry:{type:'Polygon', coordinates:[naroza]}
+  });
+}
+
+/* Hełm baniasty: wybrzuszenie, przewężenie i iglica. Taki sam
+   kształt wieńczy wieżę kościoła i każdą z trzech wież cerkwi. */
+function bania(baza, srodek, obrot, wzdluz, szer, od, barwa){
+  const kroki = [
+    [szer + 0.9, 0.7, barwa],        // gzyms
+    [szer * 0.78, 1.3, KOPULA],
+    [szer * 1.02, 1.1, KOPULA],      // brzuch bani
+    [szer * 0.60, 1.0, KOPULA],
+    [szer * 0.28, 0.9, KOPULA],
+    [szer * 0.12, 1.1, ZLOTO]        // iglica z krzyżem
+  ];
+  let h = od;
+  kroki.forEach(([s, wys, b]) => {
+    kloc(baza, srodek, obrot, wzdluz, s, s, h, h + wys, b);
+    h += wys;
+  });
+  return h;
+}
+
+/* Dach dwuspadowy udawany schodkami — coraz węższe piętra. */
+function dach(baza, srodek, obrot, wzdluz, dlugosc, szerokosc, od, wysokosc){
+  const kroki = [[1.04, .12],[.76, .34],[.46, .30],[.16, .24]];
+  let h = od;
+  kroki.forEach(([ile, czesc]) => {
+    const wys = wysokosc * czesc;
+    kloc(baza, srodek, obrot, wzdluz, dlugosc * 1.02, szerokosc * ile, h, h + wys, DACH);
+    h += wys;
+  });
+  return h;
+}
+
+function zlozBryle(z){
+  const b = [];
+  const s = [z.lng, z.lat], o = z.obrot;
+
+  if(z.typ === 'kosciol-drewniany'){
+    kloc(b, s, o, -1, 14, 10, 0, 7, DREWNO);            // nawa
+    const grzbiet = dach(b, s, o, -1, 14, 10, 7, 5.2);
+    kloc(b, s, o, 9.5, 7, 7, 0, 6, DREWNO);             // prezbiterium
+    dach(b, s, o, 9.5, 7, 7, 6, 3.6);
+    kloc(b, s, o, -11, 7, 7, 0, 13, DREWNO);            // wieża
+    kloc(b, s, o, -11, 7.8, 7.8, 13, 14.6, DREWNO);     // izbica
+    bania(b, s, o, -11, 6.4, 14.6, DREWNO);
+    kloc(b, s, o, 1, 1.8, 1.8, grzbiet - .4, grzbiet + 2, DACH);   // sygnaturka
+    bania(b, s, o, 1, 1.6, grzbiet + 2, DACH);
+  }
+
+  if(z.typ === 'kosciol-murowany'){
+    kloc(b, s, o, 0, 20, 13, 0, 9, MUR);
+    dach(b, s, o, 0, 20, 13, 9, 6.6);
+    kloc(b, s, o, 14, 8, 8, 0, 8, MUR);
+    dach(b, s, o, 14, 8, 8, 8, 4.4);
+    kloc(b, s, o, -13, 7.5, 7.5, 0, 19, MUR);
+    bania(b, s, o, -13, 7, 19, MUR);
+  }
+
+  if(z.typ === 'cerkiew'){
+    /* typ zachodniołemkowski: trzy wieże malejące ku wschodowi */
+    [[-8, 7, 11],[0, 8, 9],[7, 6.5, 7.5]].forEach(([wzdluz, szer, wys]) => {
+      kloc(b, s, o, wzdluz, szer, szer, 0, wys, DREWNO);
+      bania(b, s, o, wzdluz, szer * .92, wys, DREWNO);
+    });
+  }
+
+  if(z.typ === 'wieza'){
+    kloc(b, s, o, 0, 6, 6, 0, 9, KAMIEN);
+    kloc(b, s, o, 0, 5, 5, 9, 15, KAMIEN);
+    kloc(b, s, o, 0, 4, 4, 15, 20, KAMIEN);
+    kloc(b, s, o, 0, 2.6, 2.6, 20, 23.5, KAMIEN);
+    kloc(b, s, o, 0, .55, .55, 23.5, 25.6, ZLOTO);
+  }
+
+  return b;
+}
+
+function dodajBrylyZabytkow(){
+  const cechy = [];
+  BRYLY.forEach(z => zlozBryle(z).forEach(f => cechy.push(f)));
+  if(!cechy.length) return;
+
+  try{
+    map.addSource('zabytki-src', {type:'geojson', data:{type:'FeatureCollection', features:cechy}});
+    map.addLayer({
+      id:'zabytki-bryly', type:'fill-extrusion', source:'zabytki-src', minzoom:14,
+      paint:{
+        'fill-extrusion-color':['get','barwa'],
+        'fill-extrusion-height':['get','gora'],
+        'fill-extrusion-base':['get','dol'],
+        'fill-extrusion-vertical-gradient':true,
+        'fill-extrusion-opacity':1
+      }
+    }, pierwszySymbol());
+  }catch(e){ console.warn('Brak brył zabytków:', e); }
 }
 
 /* Ścieżki i drogi leśne przerywaną kreską — dzięki temu mapa czyta się
@@ -1383,6 +1725,7 @@ function naCieniowanie(){
     if(map.getLayer('lasy')) map.removeLayer('lasy');
     if(map.getLayer('drzewa')) map.removeLayer('drzewa');
     stopIskry();
+    stopAuta();
     map.setMaxPitch(46);
     if(map.getPitch() > 46) map.easeTo({pitch:46, duration:400});
   }catch(e){ console.warn('Cieniowanie niedostępne:', e); }
