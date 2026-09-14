@@ -88,26 +88,8 @@ body{
 .tematy button[aria-pressed="true"]{background:var(--szklo);color:var(--snieg);border-color:var(--szklo)}
 .tematy button:focus-visible{outline:2px solid var(--snieg);outline-offset:2px}
 
-/* ---------- pinezki ---------- */
-.pin{cursor:pointer;display:grid;place-items:center;transform-origin:50% 100%;position:relative}
-.pin i{
-  display:grid;place-items:center;width:23px;height:23px;border-radius:50%;
-  border:2px solid var(--snieg);box-shadow:0 2px 9px rgba(0,0,0,.5);
-}
-.pin svg{display:block}
-.pin.partner i{width:34px;height:34px;border-width:2.5px;box-shadow:0 0 0 5px rgba(156,74,34,.26),0 3px 12px rgba(0,0,0,.55)}
-.pin.wybrany i{outline:2.5px solid var(--snieg);outline-offset:2px}
-.pin.wybrany::after{
-  content:'';position:absolute;left:50%;top:50%;
-  width:23px;height:23px;margin:-11.5px 0 0 -11.5px;border-radius:50%;
-  border:2px solid var(--snieg);animation:tetno 1.9s ease-out infinite;pointer-events:none;
-}
-@keyframes tetno{
-  0%{transform:scale(1);opacity:.55}
-  70%{transform:scale(2.6);opacity:0}
-  100%{transform:scale(2.6);opacity:0}
-}
-@media (prefers-reduced-motion:reduce){.pin.wybrany::after{display:none}}
+/* pinezki rysuje teraz mapa (warstwa symboli), nie HTML — stąd brak
+   stylów; został tylko znacznik własnej pozycji, niżej przy sterowaniu */
 
 /* ---------- taśma kafelków ---------- */
 .tasma{
@@ -200,7 +182,6 @@ body.kalibracja .maplibregl-ctrl-bottom-right{bottom:0}
 .info button{font:inherit;font-size:13px;margin-top:12px;cursor:pointer;background:none;border:1px solid var(--linia);color:var(--snieg);padding:7px 13px;border-radius:3px}
 
 /* ---------- tryb kalibracji (?kalibracja=1) ---------- */
-body.kalibracja .pin{pointer-events:none}
 body.kalibracja .tasma,body.kalibracja .tematy,body.kalibracja .oto{display:none}
 body.kalibracja .sterowanie{bottom:auto;top:calc(env(safe-area-inset-top) + 66px)}
 .kal .pewnosc{font-size:11px;color:var(--kamien);margin-top:3px;display:block}
@@ -458,7 +439,7 @@ const O_TYLICZU = {
 const nietDrgania = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const KAL = new URLSearchParams(location.search).get('kalibracja') === '1';
 const PRZYKLEJ = new URLSearchParams(location.search).get('przyklej') === '1';
-let temat = 'wszystko', wybrany = null, pinezki = {}, mojaPozycja = null,
+let temat = 'wszystko', wybrany = null, mojaPozycja = null,
     znacznikJa = null, obserwator = null, dojechalo = false;
 
 const $ = s => document.querySelector(s);
@@ -990,27 +971,130 @@ function szczyty(wektor){
   }catch(e){ console.warn('Brak warstwy szczytów:', e); }
 }
 
-function ikonaSVG(kat, rozmiar){
+/* ===================================================================
+   PINEZKI
+
+   Wcześniej były znacznikami DOM. Znacznik jest kawałkiem HTML,
+   który mapa po każdej klatce przelicza na piksele i przesuwa —
+   przy włączonej rzeźbie terenu jego wysokość bierze się z kafelków
+   NMT, a te dochodzą z opóźnieniem, więc pinezka potrafi skoczyć
+   w trakcie wczytywania. Teraz jest to zwykła warstwa symboli:
+   rysuje się w tym samym przebiegu co teren, czyli trzyma się
+   gruntu i nie ma prawa drgnąć.
+   =================================================================== */
+
+const PUNKTY = () => (KAL ? kalWynik : POI);
+
+function rysujPinezke(kat, partner){
   const k = KATEGORIE[kat] || KATEGORIE.widok;
-  return '<svg viewBox="0 0 24 24" width="' + rozmiar + '" height="' + rozmiar + '">' +
-         '<path d="' + k.ikona + '" fill="none" stroke="#fff" stroke-width="2" ' +
-         'stroke-linejoin="round" stroke-linecap="round"/></svg>';
+  const S = 2, d = partner ? 34 : 23, margines = 9, W = d + margines * 2;
+  const c = document.createElement('canvas');
+  c.width = W * S; c.height = W * S;
+  const g = c.getContext('2d');
+  g.scale(S, S);
+
+  const sr = W / 2, r = d / 2;
+
+  if(partner){
+    g.strokeStyle = 'rgba(156,74,34,.26)'; g.lineWidth = 5;
+    g.beginPath(); g.arc(sr, sr, r + 2.5, 0, Math.PI * 2); g.stroke();
+  }
+
+  g.save();
+  g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 7; g.shadowOffsetY = 2;
+  g.fillStyle = partner ? '#9C4A22' : k.barwa;
+  g.beginPath(); g.arc(sr, sr, r, 0, Math.PI * 2); g.fill();
+  g.restore();
+
+  g.strokeStyle = '#EEF2EE'; g.lineWidth = partner ? 2.5 : 2;
+  g.beginPath(); g.arc(sr, sr, r, 0, Math.PI * 2); g.stroke();
+
+  const rozmiar = partner ? 17 : 12;
+  g.save();
+  g.translate(sr - rozmiar / 2, sr - rozmiar / 2);
+  g.scale(rozmiar / 24, rozmiar / 24);
+  g.strokeStyle = '#fff'; g.lineWidth = 2;
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  try{ g.stroke(new Path2D(k.ikona)); }catch(e){}
+  g.restore();
+
+  return {data: g.getImageData(0, 0, W * S, W * S), pixelRatio: S};
+}
+
+const danePunktow = () => ({
+  type:'FeatureCollection',
+  features: PUNKTY().map(p => ({
+    type:'Feature',
+    properties:{id:p.id, kat:p.kat, partner: p.partner ? 1 : 0, nazwa:p.nazwa},
+    geometry:{type:'Point', coordinates:[p.lng, p.lat]}
+  }))
+});
+
+function odswiezPinezki(){
+  const z = map.getSource('poi-src');
+  if(z) z.setData(danePunktow());
 }
 
 function rysujPinezki(){
-  POI.forEach(p => {
-    const k = KATEGORIE[p.kat] || KATEGORIE.widok;
-    const el = document.createElement('div');
-    el.className = 'pin' + (p.partner ? ' partner' : '');
-    el.innerHTML = '<i style="background:' + (p.partner ? '#9C4A22' : k.barwa) + '">' +
-                   ikonaSVG(p.kat, p.partner ? 17 : 12) + '</i>';
-    el.setAttribute('role','button');
-    el.setAttribute('aria-label', p.nazwa);
-    el.addEventListener('click', ev => { ev.stopPropagation(); pokaz(p.id); });
-    pinezki[p.id] = new maplibregl.Marker({element:el, anchor:'bottom'})
-      .setLngLat([p.lng, p.lat]).addTo(map);
+  try{
+    Object.keys(KATEGORIE).forEach(kat => {
+      [false, true].forEach(partner => {
+        const id = 'pin-' + kat + (partner ? '-partner' : '');
+        if(map.hasImage(id)) return;
+        const o = rysujPinezke(kat, partner);
+        map.addImage(id, o.data, {pixelRatio: o.pixelRatio});
+      });
+    });
+  }catch(e){ console.warn('Nie udało się przygotować pinezek:', e); }
+
+  map.addSource('poi-src', {type:'geojson', data: danePunktow()});
+
+  /* pierścień pod wybraną pinezką — jedyna ruchoma rzecz w tym zestawie */
+  map.addLayer({
+    id:'poi-pierscien', type:'circle', source:'poi-src',
+    filter:['==',['get','id'],''],
+    paint:{
+      'circle-radius':14, 'circle-color':'rgba(0,0,0,0)',
+      'circle-stroke-color':'#EEF2EE', 'circle-stroke-width':2, 'circle-stroke-opacity':.55
+    }
   });
+
+  map.addLayer({
+    id:'poi-pin', type:'symbol', source:'poi-src',
+    layout:{
+      'icon-image':['concat','pin-',['to-string',['get','kat']],
+                    ['case',['==',['get','partner'],1],'-partner','']],
+      'icon-allow-overlap':true,
+      'icon-ignore-placement':true,
+      'icon-pitch-alignment':'viewport',
+      'icon-rotation-alignment':'viewport',
+      'symbol-sort-key':['case',['==',['get','partner'],1],0,1]
+    }
+  });
+
   filtruj();
+  if(!nietDrgania) ruszPierscien();
+}
+
+let pierscienTimer = null, pierscienKrok = 0;
+
+function ruszPierscien(){
+  if(pierscienTimer) return;
+  pierscienTimer = setInterval(() => {
+    if(document.hidden || !wybrany || !map.getLayer('poi-pierscien')) return;
+    pierscienKrok = (pierscienKrok + 1) % 34;
+    const t = pierscienKrok / 34;
+    try{
+      map.setPaintProperty('poi-pierscien', 'circle-radius', 14 + t * 24);
+      map.setPaintProperty('poi-pierscien', 'circle-stroke-opacity', .55 * (1 - t));
+    }catch(e){}
+  }, 55);
+}
+
+function zaznacz(id){
+  if(!map.getLayer('poi-pierscien')) return;
+  map.setFilter('poi-pierscien', ['==',['get','id'], id || '']);
+  pierscienKrok = 0;
 }
 
 function budujTematy(){
@@ -1035,8 +1119,9 @@ const widoczne = () => POI
   .sort((a,b) => (b.partner ? 1 : 0) - (a.partner ? 1 : 0));
 
 function filtruj(){
-  const ok = new Set(widoczne().map(p => p.id));
-  POI.forEach(p => { pinezki[p.id].getElement().style.display = ok.has(p.id) ? '' : 'none'; });
+  if(!map.getLayer('poi-pin')) return;
+  const ok = widoczne().map(p => p.id);
+  map.setFilter('poi-pin', ['in',['get','id'],['literal', ok]]);
 }
 
 function budujTasme(){
@@ -1059,7 +1144,7 @@ function pokaz(id){
   const p = POI.find(x => x.id === id);
   if(!p) return;
   wybrany = id;
-  Object.entries(pinezki).forEach(([k,m]) => m.getElement().classList.toggle('wybrany', k === id));
+  zaznacz(id);
   map.easeTo({center:[p.lng, p.lat], zoom:16.6, pitch:50, offset:[0,-110],
               duration: nietDrgania ? 0 : 1100});
   rysujPanel(p);
@@ -1102,7 +1187,7 @@ function rysujPanel(p){
 
 function pokazOTyliczu(){
   wybrany = null;
-  Object.values(pinezki).forEach(m => m.getElement().classList.remove('wybrany'));
+  zaznacz(null);
   $('#panel-tresc').innerHTML =
     '<h2>Tylicz</h2>' +
     '<div class="meta">' + O_TYLICZU.meta + '</div>' +
@@ -1227,10 +1312,10 @@ function przyklejDoOSM(){
     p.lng = +t.lng.toFixed(5);
     p.lat = +t.lat.toFixed(5);
     przyklejone.add(p.id);
-    if(pinezki[p.id]) pinezki[p.id].setLngLat([p.lng, p.lat]);
     console.log('przyklejono: ' + p.nazwa + '  ->  "' + t.nazwa + '" (' +
                 t.warstwa + '), przesunięcie ' + ile + ' m');
   });
+  odswiezPinezki();
 
   const zostalo = POI.filter(p => p.osm && !p.recznie && !przyklejone.has(p.id));
   if(!zostalo.length) console.log('wszystkie punkty przyklejone do OSM');
@@ -1331,7 +1416,22 @@ function czujnik(){
   }
 }
 
-map.on('click', () => { if(!KAL) panel.dataset.otwarty = '0'; });
+/* Pinezka nie jest już elementem HTML, więc kliknięcie łapiemy na mapie.
+   Pytamy o prostokąt kilkunastu pikseli wokół palca, nie o sam punkt. */
+map.on('click', e => {
+  if(KAL) return;
+  if(map.getLayer('poi-pin')){
+    const z = 13;
+    const trafienia = map.queryRenderedFeatures(
+      [[e.point.x - z, e.point.y - z], [e.point.x + z, e.point.y + z]],
+      {layers:['poi-pin']});
+    if(trafienia.length){ pokaz(trafienia[0].properties.id); return; }
+  }
+  panel.dataset.otwarty = '0';
+});
+
+map.on('mouseenter', 'poi-pin', () => { map.getCanvas().style.cursor = 'pointer'; });
+map.on('mouseleave', 'poi-pin', () => { map.getCanvas().style.cursor = ''; });
 
 /* ===================================================================
    KALIBRACJA — ?kalibracja=1
@@ -1374,8 +1474,7 @@ function kalPokazKrok(){
     ? 'Współrzędne potwierdzone źródłem — sprawdź tylko pobieżnie.'
     : 'Współrzędne szacowane — to miejsce warto wskazać dokładnie.';
 
-  Object.entries(pinezki).forEach(([id, m]) =>
-    m.getElement().classList.toggle('wybrany', id === p.id));
+  zaznacz(p.id);
 }
 
 function kalUstaw(lngLat){
@@ -1384,7 +1483,7 @@ function kalUstaw(lngLat){
   p.lng = +lngLat.lng.toFixed(5);
   p.pewne = true;                     // wskazane ręcznie, czyli sprawdzone
   kalRuszone.add(p.id);
-  pinezki[p.id].setLngLat([p.lng, p.lat]);
+  odswiezPinezki();
   kalIdx++;
   kalPokazKrok();
 }
